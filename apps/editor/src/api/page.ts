@@ -1,5 +1,6 @@
 import request from './request';
 import type { ApiResponse } from './request';
+import type { PageSchema } from '@page-builder/shared';
 
 export interface PageVO {
   pageId: number;
@@ -14,6 +15,19 @@ export interface PageVO {
   componentCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * 将 API 返回的裸 schema 安全转换为 PageSchema（带默认值兜底）
+ */
+export function toPageSchema(raw: Record<string, unknown>): PageSchema {
+  return {
+    id: (raw.id as string) || 'page-unknown',
+    name: (raw.name as string) || '未命名页面',
+    version: (raw.version as string) || '1.0.0',
+    props: (raw.props as PageSchema['props']) || { title: '', backgroundColor: '#ffffff' },
+    children: (raw.children as PageSchema['children']) || [],
+  };
 }
 
 export interface PageListResult {

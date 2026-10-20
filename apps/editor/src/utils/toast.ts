@@ -5,6 +5,11 @@
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+/** Toast 默认显示时长（毫秒） */
+const DEFAULT_DURATION_MS = 3000;
+/** Toast 退出动画时长（毫秒），需与 CSS duration-300 一致 */
+const EXIT_ANIMATION_MS = 300;
+
 let toastContainer: HTMLDivElement | null = null;
 
 function getContainer(): HTMLDivElement {
@@ -23,7 +28,7 @@ const typeStyles: Record<ToastType, string> = {
   info: 'bg-blue-500 text-white',
 };
 
-export function toast(message: string, type: ToastType = 'info', duration = 3000): void {
+export function toast(message: string, type: ToastType = 'info', duration = DEFAULT_DURATION_MS): void {
   const container = getContainer();
 
   const el = document.createElement('div');
@@ -44,6 +49,6 @@ export function toast(message: string, type: ToastType = 'info', duration = 3000
     el.classList.add('translate-x-full', 'opacity-0');
     setTimeout(() => {
       el.remove();
-    }, 300);
+    }, EXIT_ANIMATION_MS);
   }, duration);
 }

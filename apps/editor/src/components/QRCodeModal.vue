@@ -57,6 +57,8 @@
 import { ref, watch } from 'vue';
 import QRCode from 'qrcode';
 import { useEditorStore } from '../stores/editorStore';
+import { toast } from '../utils/toast';
+import { logger } from '../utils/logger';
 
 const { page } = useEditorStore();
 
@@ -92,16 +94,16 @@ const generateQRCode = async () => {
     });
     qrCodeUrl.value = qrCode;
   } catch (error) {
-    console.error('生成二维码失败:', error);
+    logger.error('QRCode', '生成二维码失败', error);
   }
 };
 
 const copyUrl = async () => {
   try {
     await navigator.clipboard.writeText(previewUrl.value);
-    alert('地址已复制到剪贴板');
+    toast('地址已复制到剪贴板', 'success');
   } catch (error) {
-    console.error('复制失败:', error);
+    logger.error('QRCode', '复制失败', error);
   }
 };
 

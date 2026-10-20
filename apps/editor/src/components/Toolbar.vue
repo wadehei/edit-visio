@@ -92,9 +92,11 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useEditorStore } from '../stores/editorStore';
 import { useAuthStore } from '../stores/authStore';
+import { saveAsJSON } from '@page-builder/shared';
 import { Undo, Redo, Trash2, Save, Eye, Layout, Code, LogOut } from 'lucide-vue-next';
 import { exportToHTML, exportToVue } from '../utils/codeExport';
 import { toast } from '../utils/toast';
+import { logger } from '../utils/logger';
 
 const router = useRouter();
 const { undo, redo, history, page, selectedId, deleteComponent } = useEditorStore();
@@ -113,14 +115,7 @@ const handleDeleteSelected = () => {
 };
 
 const handleSave = () => {
-  const json = JSON.stringify(page.value, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${page.value.name}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  saveAsJSON(page.value);
 };
 
 const handleExportCode = () => {
@@ -140,7 +135,7 @@ const handleExportCode = () => {
     filename = `${page.value.name}.vue`;
     mimeType = 'text/plain';
   } else {
-    alert('无效的选项');
+    toast('无效的导出选项', 'warning');
     return;
   }
 
@@ -163,7 +158,7 @@ const handleLogout = async () => {
   try {
     await authStore.logout();
   } catch (error) {
-    console.error('Failed to logout:', error);
+    logger.error('Toolbar', 'Failed to logout', error);
   } finally {
     router.push('/login');
     toast('已退出登录', 'info');

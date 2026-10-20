@@ -1,5 +1,6 @@
 import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { logger } from '../utils/logger';
 
 // 统一响应结构
 export interface ApiResponse<T = unknown> {
@@ -8,9 +9,18 @@ export interface ApiResponse<T = unknown> {
   message: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  logger.error('API', 'VITE_API_BASE_URL is not configured. Check your .env file.');
+}
+
+/** API 请求超时时间（毫秒） */
+const API_TIMEOUT_MS = 15_000;
+
 const request = axios.create({
-  baseURL: 'http://localhost:8088/api/v1',
-  timeout: 15000,
+  baseURL: API_BASE_URL || '/api/v1',
+  timeout: API_TIMEOUT_MS,
 });
 
 // 请求拦截器：自动附加 Bearer token

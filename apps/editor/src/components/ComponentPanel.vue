@@ -104,20 +104,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Search, Star } from 'lucide-vue-next';
-import {
-  TextMeta, ButtonMeta, ImageMeta, ContainerMeta,
-  DividerMeta, SpacerMeta, CardMeta, BadgeMeta, RichTextMeta, InputMeta,
-  VideoMeta, AudioMeta, MapMeta,
-} from '@page-builder/components';
+import { getAllMetas } from '../registry/componentRegistry';
 import type { ComponentMeta } from '@page-builder/shared';
 import { useEditorStore } from '../stores/editorStore';
 import ComponentItem from './ComponentItem.vue';
+import { logger } from '../utils/logger';
 
-const allComponents: ComponentMeta[] = [
-  TextMeta, ButtonMeta, ImageMeta, ContainerMeta,
-  DividerMeta, SpacerMeta, CardMeta, BadgeMeta, RichTextMeta, InputMeta,
-  VideoMeta, AudioMeta, MapMeta,
-];
+const allComponents: ComponentMeta[] = getAllMetas();
 
 const { setDragging } = useEditorStore();
 
@@ -220,7 +213,7 @@ function saveFavorites() {
   try {
     localStorage.setItem('favorite-components', JSON.stringify(favoriteComponents.value));
   } catch (error) {
-    console.error('Failed to save favorites:', error);
+    logger.error('ComponentPanel', 'Failed to save favorites', error);
   }
 }
 </script>

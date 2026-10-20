@@ -52,7 +52,7 @@ const layoutRecommendations = [
 ];
 
 export function useAIAssistant() {
-  const { addComponent, page } = useEditorStore();
+  const { addComponent, page, updateComponent } = useEditorStore();
   const showAIPanel = ref(false);
   const recommendations = ref<AIRecommendation[]>([]);
 
@@ -151,7 +151,7 @@ export function useAIAssistant() {
     const layout = layoutRecommendations[layoutIndex];
     if (!layout) return;
 
-    const defaultProps: Record<string, any> = {
+    const defaultProps: Record<string, Record<string, unknown>> = {
       text: { content: '请输入内容', color: '#333333', fontSize: '14px' },
       image: { src: 'https://via.placeholder.com/375x200', alt: '图片', width: '100%' },
       button: { text: '按钮', type: 'primary', size: 'medium' },
@@ -166,13 +166,17 @@ export function useAIAssistant() {
     showAIPanel.value = false;
   };
 
-  // 智能优化
+  // 智能优化：自动为缺少间距的组件添加 margin
   const optimizePage = () => {
-    // 自动添加间距
     const components = page.value.children;
-    components.forEach((comp, index) => {
-      if (index > 0 && !comp.styles.margin) {
-        // 这里应该调用 updateComponent，但为了简化，只给出建议
+    components.forEach((comp) => {
+      if (!comp.styles.margin) {
+        updateComponent(comp.id, {
+          styles: {
+            ...comp.styles,
+            margin: '8px 0',
+          },
+        });
       }
     });
   };

@@ -1,5 +1,10 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useEditorStore } from '../stores/editorStore';
+import {
+  findComponentInTree,
+  duplicateComponentTree,
+  saveAsJSON,
+} from '@page-builder/shared';
 
 export function useKeyboardShortcuts() {
   const {
@@ -9,7 +14,9 @@ export function useKeyboardShortcuts() {
     selectedId,
     page,
     setSelectedId,
-    history,
+    insertComponentTree,
+    copyComponent,
+    pasteComponent,
   } = useEditorStore();
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,6 +38,18 @@ export function useKeyboardShortcuts() {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
       e.preventDefault();
       redo();
+    }
+
+    // Ctrl/Cmd + C - 复制
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId.value) {
+      e.preventDefault();
+      copyComponent();
+    }
+
+    // Ctrl/Cmd + V - 粘贴
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      e.preventDefault();
+      pasteComponent();
     }
 
     // Delete / Backspace - 删除选中组件
@@ -70,56 +89,27 @@ export function useKeyboardShortcuts() {
     // Ctrl/Cmd + S - 保存
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      handleSave();
+      saveAsJSON(page.value);
     }
 
-    // Ctrl/Cmd + D - 复制组件
+    // Ctrl/Cmd + D - 复制组件（快捷方式）
     if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedId.value) {
       e.preventDefault();
       handleDuplicate();
     }
   };
 
-  const handleSave = () => {
-    const json = JSON.stringify(page.value, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${page.value.name}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleDuplicate = () => {
     if (!selectedId.value) return;
 
-    const findComponent = (components: any[]): any => {
-      for (const component of components) {
-        if (component.id === selectedId.value) {
-          return component;
-        }
-        if (component.children) {
-          const found = findComponent(component.children);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const component = findComponent(page.value.children);
+    const component = findComponentInTree(page.value.children, selectedId.value);
     if (!component) return;
 
-    const duplicateComponent = (comp: any): any => ({
-      ...comp,
-      id: `comp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      children: comp.children?.map(duplicateComponent) || [],
-    });
-
-    const newComponent = duplicateComponent(component);
+    const newComponent = duplicateComponentTree(component);
     const index = page.value.children.findIndex(c => c.id === selectedId.value);
-    const { addComponent } = useEditorStore();
-    addComponent(newComponent.type, 'root', index + 1, newComponent.props, newComponent.styles);
+
+    // 使用 insertComponentTree 保留子组件结构（addComponent 会忽略 children）
+    insertComponentTree(newComponent, 'root', index + 1);
   };
 
   onMounted(() => {

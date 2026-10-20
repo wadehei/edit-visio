@@ -1,11 +1,12 @@
 import type { PageSchema, ComponentSchema } from '@page-builder/shared';
+import { generateId } from '@page-builder/shared';
 
 /**
  * 创建默认页面
  */
 export function createDefaultPage(name: string = '未命名页面'): PageSchema {
   return {
-    id: `page-${Date.now()}`,
+    id: `page-${generateId()}`,
     name,
     version: '1.0.0',
     props: {

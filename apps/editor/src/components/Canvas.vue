@@ -99,6 +99,7 @@
                 @dragover.prevent="handleComponentDragOver($event, index)"
                 @drop.stop="handleComponentDrop($event, index)"
                 @dragend="handleComponentDragEnd"
+                @contextmenu.prevent="handleContextMenu($event, component.id)"
               >
                 <div
                   v-if="dragOverIndex === index && draggedComponentId"
@@ -118,6 +119,9 @@
       </div>
     </div>
   </div>
+
+  <!-- 右键菜单 -->
+  <ContextMenu ref="contextMenuRef" />
 </template>
 
 <script setup lang="ts">
@@ -126,11 +130,8 @@ import { useEditorStore } from '../stores/editorStore';
 import { useDevicePreview } from '../composables/useDevicePreview';
 import CanvasComponent from './CanvasComponent.vue';
 import DeviceSwitcher from './DeviceSwitcher.vue';
-import {
-  TextMeta, ButtonMeta, ImageMeta, ContainerMeta,
-  DividerMeta, SpacerMeta, CardMeta, BadgeMeta, RichTextMeta, InputMeta,
-  VideoMeta, AudioMeta, MapMeta,
-} from '@page-builder/components';
+import ContextMenu from './ContextMenu.vue';
+import { getMeta } from '../registry/componentRegistry';
 
 const {
   page, selectedId, setSelectedId, addComponent, moveComponent, setDragging,
@@ -142,6 +143,11 @@ const { currentDeviceConfig } = useDevicePreview();
 
 const draggedComponentId = ref<string | null>(null);
 const dragOverIndex = ref<number | null>(null);
+const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null);
+
+const handleContextMenu = (e: MouseEvent, componentId: string) => {
+  contextMenuRef.value?.show(e, componentId);
+};
 
 const canvasStyles = computed(() => ({
   width: `${currentDeviceConfig.value.width}px`,
@@ -171,22 +177,6 @@ const handleCanvasClick = (e: MouseEvent) => {
   }
 };
 
-const componentMetas: Record<string, any> = {
-  text: TextMeta,
-  button: ButtonMeta,
-  image: ImageMeta,
-  container: ContainerMeta,
-  divider: DividerMeta,
-  spacer: SpacerMeta,
-  card: CardMeta,
-  badge: BadgeMeta,
-  richText: RichTextMeta,
-  input: InputMeta,
-  video: VideoMeta,
-  audio: AudioComponent,
-  map: MapMeta,
-};
-
 const handleDragOver = (e: DragEvent) => {
   if (e.dataTransfer) {
     e.dataTransfer.dropEffect = 'copy';
@@ -198,9 +188,15 @@ const handleDrop = (e: DragEvent) => {
   const componentType = e.dataTransfer?.getData('componentType');
 
   if (componentType) {
-    const meta = componentMetas[componentType];
+    const meta = getMeta(componentType);
     const index = page.value.children.length;
-    addComponent(componentType, 'root', index, meta?.defaultProps || {}, meta?.defaultStyles || {});
+    addComponent(
+      componentType,
+      'root',
+      index,
+      (meta?.defaultProps as Record<string, unknown>) || {},
+      (meta?.defaultStyles as Record<string, string>) || {},
+    );
     setDragging(false);
   }
 };

@@ -32,6 +32,7 @@
 
 <script setup lang="ts">
 import type { ComponentSchema } from '@page-builder/shared';
+import { getComponentLabel } from '@page-builder/shared';
 import { useEditorStore } from '../stores/editorStore';
 
 interface Props {
@@ -42,20 +43,4 @@ interface Props {
 defineProps<Props>();
 
 const { selectedId, setSelectedId, deleteComponent } = useEditorStore();
-
-const getComponentLabel = (component: ComponentSchema) => {
-  const labels: Record<string, string> = {
-    text: '📝 文本',
-    button: '🔘 按钮',
-    image: '🖼️ 图片',
-    container: '📦 容器',
-    divider: '➖ 分割线',
-    spacer: '↕️ 间距',
-    card: '🎴 卡片',
-    badge: '🏷️ 徽章',
-    richText: '📄 富文本',
-    input: '⌨️ 输入框',
-  };
-  return labels[component.type] || component.type;
-};
 </script>

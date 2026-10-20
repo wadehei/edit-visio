@@ -28,15 +28,15 @@
         <!-- 页面切换 -->
         <div v-if="pages.length > 0" class="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
           <button
-            v-for="page in pages"
-            :key="page.pageId"
-            @click="currentPageTitle = page.title"
+            v-for="pg in pages"
+            :key="pg.pageId"
+            @click="handleSelectPage(pg)"
             class="px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200"
-            :class="currentPageTitle === page.title
+            :class="currentPageId === pg.pageId
               ? 'bg-white text-gray-700 shadow-sm'
               : 'text-gray-400 hover:text-gray-600'"
           >
-            {{ page.title }}
+            {{ pg.title }}
           </button>
         </div>
 
@@ -52,6 +52,9 @@
         </button>
 
         <div class="w-px h-5 bg-gray-200" />
+
+        <!-- 保存状态 -->
+        <span v-if="autoSaveStatus" class="text-xs text-gray-400">{{ autoSaveStatus }}</span>
 
         <div class="flex items-center gap-1.5 text-xs text-gray-400">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,20 +100,10 @@
             </button>
           </div>
 
-          <!-- 页面选中状态 -->
-          <div v-else class="bg-white rounded-2xl shadow-sm border border-gray-100 w-full max-w-[375px] min-h-[500px] overflow-hidden">
-            <!-- 手机模拟框顶部 -->
-            <div class="h-8 bg-gray-50 border-b border-gray-100 flex items-center justify-center">
-              <div class="w-16 h-1 bg-gray-200 rounded-full" />
-            </div>
-            <div class="p-6 flex flex-col items-center justify-center min-h-[450px]">
-              <svg class="w-12 h-12 text-indigo-100 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p class="text-sm font-medium text-gray-600">{{ currentPageTitle }}</p>
-              <p class="text-xs text-gray-400 mt-1">编辑器画布（待实现）</p>
-            </div>
-          </div>
+          <!-- 编辑器画布 -->
+          <ErrorBoundary v-else>
+            <Canvas />
+          </ErrorBoundary>
         </div>
       </div>
 
@@ -126,17 +119,31 @@ import { useRoute, useRouter } from 'vue-router';
 import * as projectApi from '../api/project';
 import * as pageApi from '../api/page';
 import type { PageVO } from '../api/page';
+import { toPageSchema } from '../api/page';
+import { useEditorStore } from '../stores/editorStore';
+import { useAutoSave } from '../composables/useAutoSave';
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
+import { toast } from '../utils/toast';
+import { logger } from '../utils/logger';
 import ComponentPanel from '../components/ComponentPanel.vue';
 import PropertyPanel from '../components/PropertyPanel.vue';
+import Canvas from '../components/Canvas.vue';
+import ErrorBoundary from '../components/ErrorBoundary.vue';
 
 const route = useRoute();
 const router = useRouter();
+const editorStore = useEditorStore();
 
 const projectId = route.params.projectId as string;
 const projectName = ref('');
 const pages = ref<PageVO[]>([]);
 const loadingPages = ref(true);
-const currentPageTitle = ref('');
+const currentPageId = ref<number | null>(null);
+const autoSaveStatus = ref('');
+
+// 启用快捷键和自动保存
+useKeyboardShortcuts();
+useAutoSave();
 
 onMounted(async () => {
   try {
@@ -150,14 +157,23 @@ onMounted(async () => {
     const { data } = await pageApi.getPages(projectId);
     pages.value = data.data.list;
     if (pages.value.length > 0) {
-      currentPageTitle.value = pages.value[0].title;
+      // 选择首页或第一个页面
+      const homePage = pages.value.find(p => p.isHome) || pages.value[0];
+      handleSelectPage(homePage);
     }
   } catch {
-    console.error('加载页面列表失败');
+    logger.error('EditorPage', '加载页面列表失败');
   } finally {
     loadingPages.value = false;
   }
 });
+
+function handleSelectPage(pg: PageVO) {
+  currentPageId.value = pg.pageId;
+  if (pg.schema && typeof pg.schema === 'object') {
+    editorStore.setPage(toPageSchema(pg.schema));
+  }
+}
 
 async function handleCreatePage() {
   const title = prompt('页面名称:', '新页面');
@@ -165,10 +181,10 @@ async function handleCreatePage() {
   try {
     const { data } = await pageApi.createPage(projectId, { title, isHome: true });
     pages.value.push(data.data);
-    currentPageTitle.value = data.data.title;
+    handleSelectPage(data.data);
   } catch (err: unknown) {
-    const error = err as Error;
-    alert('创建失败: ' + error.message);
+    const error = err instanceof Error ? err.message : '未知错误';
+    toast('创建失败: ' + error, 'error');
   }
 }
 </script>

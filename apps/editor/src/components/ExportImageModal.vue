@@ -74,6 +74,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useEditorStore } from '../stores/editorStore';
+import { toast } from '../utils/toast';
+import { logger } from '../utils/logger';
 
 const { page } = useEditorStore();
 
@@ -103,15 +105,15 @@ const exportImage = async () => {
   try {
     // 这里应该使用 html2canvas 或类似库
     // 为了简化，我们使用一个模拟的导出
-    alert(`导出功能开发中...\n格式: ${selectedFormat.value.toUpperCase()}\n质量: ${quality.value}%\n背景: ${background.value}`);
+    toast(`导出功能开发中... 格式: ${selectedFormat.value.toUpperCase()}, 质量: ${quality.value}%`, 'info');
 
     // 实际实现需要：
     // 1. 使用 html2canvas 捕获画布
     // 2. 转换为指定格式
     // 3. 下载文件
   } catch (error) {
-    console.error('导出失败:', error);
-    alert('导出失败，请重试');
+    logger.error('ExportImage', '导出失败', error);
+    toast('导出失败，请重试', 'error');
   } finally {
     exporting.value = false;
     closeModal();

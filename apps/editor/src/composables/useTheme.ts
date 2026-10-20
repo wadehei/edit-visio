@@ -1,4 +1,5 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
+import { logger } from '../utils/logger';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -26,7 +27,7 @@ export function useTheme() {
         return JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Failed to load theme config:', error);
+      logger.error('Theme', 'Failed to load theme config', error);
     }
     return {
       mode: 'light',
@@ -38,7 +39,7 @@ export function useTheme() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(themeConfig.value));
     } catch (error) {
-      console.error('Failed to save theme config:', error);
+      logger.error('Theme', 'Failed to save theme config', error);
     }
   }
 
@@ -64,14 +65,26 @@ export function useTheme() {
     root.style.setProperty('--primary-color', themeConfig.value.primaryColor);
   }
 
-  // 监听系统主题变化
-  if (typeof window !== 'undefined') {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (themeConfig.value.mode === 'system') {
-        applyTheme();
-      }
-    });
+  // 监听系统主题变化（组件卸载时清理，防止内存泄漏）
+  const mediaQuery = typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null;
+
+  const handleSystemThemeChange = () => {
+    if (themeConfig.value.mode === 'system') {
+      applyTheme();
+    }
+  };
+
+  if (mediaQuery) {
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
   }
+
+  onUnmounted(() => {
+    if (mediaQuery) {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    }
+  });
 
   // 初始化时应用主题
   applyTheme();

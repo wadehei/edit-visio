@@ -213,6 +213,8 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/authStore';
 import * as projectApi from '../api/project';
 import type { Project } from '../api/project';
+import { toast } from '../utils/toast';
+import { logger } from '../utils/logger';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -235,7 +237,7 @@ async function loadProjects() {
     projects.value = data.data.list;
   } catch (err: unknown) {
     const error = err as Error;
-    console.error('加载项目失败:', error.message);
+    logger.error('HomePage', '加载项目失败', error);
   } finally {
     loading.value = false;
   }
@@ -258,8 +260,8 @@ async function handleCreateProject() {
     newProjectDesc.value = '';
     await loadProjects();
   } catch (err: unknown) {
-    const error = err as Error;
-    alert('创建失败: ' + error.message);
+    const msg = err instanceof Error ? err.message : '未知错误';
+    toast('创建失败: ' + msg, 'error');
   } finally {
     creating.value = false;
   }
@@ -271,8 +273,8 @@ async function handleDeleteProject(project: Project) {
     await projectApi.deleteProject(String(project.projectId));
     await loadProjects();
   } catch (err: unknown) {
-    const error = err as Error;
-    alert('删除失败: ' + error.message);
+    const msg = err instanceof Error ? err.message : '未知错误';
+    toast('删除失败: ' + msg, 'error');
   }
 }
 

@@ -2,16 +2,26 @@
   <div
     class="relative transition-all duration-200 group"
     :class="{
-      'ring-2 ring-blue-500 shadow-md': isSelected,
-      'ring-1 ring-blue-300': isHovered && !isSelected,
+      'ring-2 ring-blue-500 shadow-md': isSelected && !component.locked,
+      'ring-1 ring-blue-300': isHovered && !isSelected && !component.locked,
+      'opacity-30': component.visible === false,
+      'cursor-not-allowed': component.locked,
     }"
     @click.stop="handleClick"
     @mouseenter.stop="handleMouseEnter"
     @mouseleave="handleMouseLeave"
   >
+    <!-- 锁定标记 -->
+    <div
+      v-if="component.locked"
+      class="absolute -top-6 right-0 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-t z-20"
+    >
+      🔒
+    </div>
+
     <!-- 组件类型标签 -->
     <div
-      v-if="isSelected || isHovered"
+      v-if="(isSelected || isHovered) && !component.locked"
       class="absolute -top-6 left-0 px-2 py-0.5 bg-blue-500 text-white text-xs rounded-t z-20 transition-all"
     >
       {{ getComponentLabel(component) }}
@@ -30,7 +40,7 @@
           v-for="child in component.children"
           :key="child.id"
           :component="child"
-          :is-selected="false"
+          :is-selected="selectedId === child.id"
         />
       </div>
       <div
@@ -85,17 +95,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
+import { getComponentLabel, duplicateComponentTree } from '@page-builder/shared';
 import { useEditorStore } from '../stores/editorStore';
-import {
-  TextComponent, ButtonComponent, ImageComponent, ContainerComponent,
-  DividerComponent, SpacerComponent, CardComponent, BadgeComponent,
-  RichTextComponent, InputComponent, VideoComponent, AudioComponent, MapComponent,
-} from '@page-builder/components';
-import {
-  TextMeta, ButtonMeta, ImageMeta, ContainerMeta,
-  DividerMeta, SpacerMeta, CardMeta, BadgeMeta, RichTextMeta, InputMeta,
-  VideoMeta, AudioMeta, MapMeta,
-} from '@page-builder/components';
+import { getComponent, getMeta, isContainerType } from '../registry/componentRegistry';
 
 interface Props {
   component: ComponentSchema;
@@ -104,62 +106,23 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const { setSelectedId, setHoveredId, hoveredId, deleteComponent, addComponent } = useEditorStore();
+const { setSelectedId, setHoveredId, hoveredId, selectedId, toggleSelection, deleteComponent, insertComponentTree, page } = useEditorStore();
 
-const componentMap: Record<string, any> = {
-  text: TextComponent,
-  button: ButtonComponent,
-  image: ImageComponent,
-  container: ContainerComponent,
-  divider: DividerComponent,
-  spacer: SpacerComponent,
-  card: CardComponent,
-  badge: BadgeComponent,
-  richText: RichTextComponent,
-  input: InputComponent,
-  video: VideoComponent,
-  audio: AudioComponent,
-  map: MapComponent,
-};
-
-const componentMetas: Record<string, any> = {
-  text: TextMeta,
-  button: ButtonMeta,
-  image: ImageMeta,
-  container: ContainerMeta,
-  divider: DividerMeta,
-  spacer: SpacerMeta,
-  card: CardMeta,
-  badge: BadgeMeta,
-  richText: RichTextMeta,
-  input: InputMeta,
-  video: VideoMeta,
-  audio: AudioMeta,
-  map: MapMeta,
-};
-
-const Component = computed(() => componentMap[props.component.type]);
-const isContainer = computed(() => props.component.type === 'container' || props.component.type === 'card');
+const Component = computed(() => getComponent(props.component.type));
+const isContainer = computed(() => isContainerType(props.component.type));
 const isHovered = computed(() => hoveredId.value === props.component.id);
 
-const getComponentLabel = (component: ComponentSchema) => {
-  const labels: Record<string, string> = {
-    text: '📝 文本',
-    button: '🔘 按钮',
-    image: '🖼️ 图片',
-    container: '📦 容器',
-    divider: '➖ 分割线',
-    spacer: '↕️ 间距',
-    card: '🎴 卡片',
-    badge: '🏷️ 徽章',
-    richText: '📄 富文本',
-    input: '⌨️ 输入框',
-  };
-  return labels[component.type] || component.type;
-};
+const handleClick = (e: MouseEvent) => {
+  // 锁定的组件不可选中
+  if (props.component.locked) return;
 
-const handleClick = () => {
-  setSelectedId(props.component.id);
+  if (e.shiftKey) {
+    // Shift+Click: 切换多选
+    toggleSelection(props.component.id);
+  } else {
+    // 普通点击: 单选
+    setSelectedId(props.component.id);
+  }
 };
 
 const handleMouseEnter = () => {
@@ -177,16 +140,10 @@ const handleDelete = () => {
 };
 
 const handleDuplicate = () => {
-  const duplicateComponent = (comp: any): any => ({
-    ...comp,
-    id: `comp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    children: comp.children?.map(duplicateComponent) || [],
-  });
-
-  const newComponent = duplicateComponent(props.component);
-  const { page } = useEditorStore();
+  const newComponent = duplicateComponentTree(props.component);
   const index = page.value.children.findIndex(c => c.id === props.component.id);
-  addComponent(newComponent.type, 'root', index + 1, newComponent.props, newComponent.styles);
+  // 使用 insertComponentTree 保留子组件结构（addComponent 会忽略 children）
+  insertComponentTree(newComponent, 'root', index + 1);
 };
 
 const handleContainerDrop = (e: DragEvent) => {
@@ -195,14 +152,14 @@ const handleContainerDrop = (e: DragEvent) => {
 
   const componentType = e.dataTransfer?.getData('componentType');
   if (componentType) {
-    const meta = componentMetas[componentType];
+    const meta = getMeta(componentType);
     const index = props.component.children?.length || 0;
     addComponent(
       componentType,
       props.component.id,
       index,
-      meta?.defaultProps || {},
-      meta?.defaultStyles || {}
+      (meta?.defaultProps as Record<string, unknown>) || {},
+      (meta?.defaultStyles as Record<string, string>) || {},
     );
   }
 };

@@ -8,16 +8,35 @@
       :key="component.id"
     >
       <div
-        class="flex items-center px-2 py-1 rounded cursor-pointer hover:bg-gray-100"
-        :class="{ 'bg-blue-50 text-blue-600': selectedId === component.id }"
+        class="flex items-center px-2 py-1 rounded cursor-pointer hover:bg-gray-100 group"
+        :class="{
+          'bg-blue-50 text-blue-600': selectedId === component.id,
+          'opacity-50': component.visible === false,
+        }"
         @click="setSelectedId(component.id)"
       >
         <span class="text-xs flex-1 truncate">
-          {{ getComponentLabel(component) }}
+          {{ component.locked ? '🔒 ' : '' }}{{ getComponentLabel(component) }}
         </span>
+        <!-- 可见性切换 -->
+        <button
+          @click.stop="toggleVisibility(component.id, component.visible)"
+          class="text-gray-400 hover:text-gray-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+          :title="component.visible === false ? '显示' : '隐藏'"
+        >
+          {{ component.visible === false ? '👁️‍🗨️' : '👁️' }}
+        </button>
+        <!-- 锁定切换 -->
+        <button
+          @click.stop="toggleLock(component.id, component.locked)"
+          class="text-gray-400 hover:text-gray-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+          :title="component.locked ? '解锁' : '锁定'"
+        >
+          {{ component.locked ? '🔓' : '🔒' }}
+        </button>
         <button
           @click.stop="deleteComponent(component.id)"
-          class="text-red-500 hover:text-red-700 text-xs"
+          class="text-red-500 hover:text-red-700 text-xs opacity-0 group-hover:opacity-100 transition-opacity ml-1"
           title="删除"
         >
           ×
@@ -33,23 +52,15 @@
 
 <script setup lang="ts">
 import { useEditorStore } from '../stores/editorStore';
-import type { ComponentSchema } from '@page-builder/shared';
+import { getComponentLabel } from '@page-builder/shared';
 
-const { page, selectedId, setSelectedId, deleteComponent } = useEditorStore();
+const { page, selectedId, setSelectedId, deleteComponent, updateComponent } = useEditorStore();
 
-const getComponentLabel = (component: ComponentSchema) => {
-  const labels: Record<string, string> = {
-    text: '📝 文本',
-    button: '🔘 按钮',
-    image: '🖼️ 图片',
-    container: '📦 容器',
-    divider: '➖ 分割线',
-    spacer: '↕️ 间距',
-    card: '🎴 卡片',
-    badge: '🏷️ 徽章',
-    richText: '📄 富文本',
-    input: '⌨️ 输入框',
-  };
-  return labels[component.type] || component.type;
+const toggleVisibility = (id: string, currentVisible: boolean | undefined) => {
+  updateComponent(id, { visible: currentVisible === false ? true : false } as any);
+};
+
+const toggleLock = (id: string, currentLocked: boolean | undefined) => {
+  updateComponent(id, { locked: !currentLocked } as any);
 };
 </script>
