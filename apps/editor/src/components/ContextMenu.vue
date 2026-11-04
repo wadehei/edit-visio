@@ -224,17 +224,20 @@ const handleClickOutside = () => {
   }
 };
 
-document.addEventListener('click', handleClickOutside);
-document.addEventListener('contextmenu', (e) => {
+const handleContextMenuOutside = (e: MouseEvent) => {
   // 如果点击的不是菜单本身，关闭菜单
   const target = e.target as HTMLElement;
   if (!target.closest('.fixed.z-50') && visible.value) {
     hide();
   }
-});
+};
+
+document.addEventListener('click', handleClickOutside);
+document.addEventListener('contextmenu', handleContextMenuOutside);
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener('contextmenu', handleContextMenuOutside);
 });
 
 defineExpose({ show });

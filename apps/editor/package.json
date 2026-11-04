@@ -18,7 +18,6 @@
     "@page-builder/components": "workspace:*",
     "@page-builder/core": "workspace:*",
     "@page-builder/shared": "workspace:*",
-    "@pinia/colada": "^1.4.9",
     "axios": "^1.20.0",
     "lucide-vue-next": "^0.303.0",
     "pinia": "^4.1.0",

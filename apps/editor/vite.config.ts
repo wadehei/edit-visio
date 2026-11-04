@@ -82,7 +82,7 @@ export default defineConfig({
     open: true,
   },
   build: {
-    target: 'es2020',
+    target: 'es2022',
     sourcemap: false,
     cssCodeSplit: true,
     chunkSizeWarningLimit: 1000,
