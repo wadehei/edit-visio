@@ -90,6 +90,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import type { ComponentSchema } from '@page-builder/shared';
 import { getComponentLabel, duplicateComponentTree } from '@page-builder/shared';
 import { useEditorStore } from '../stores/editorStore';
@@ -102,21 +103,22 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { hoveredId, selectedId, page } = storeToRefs(editorStore);
+// action：是稳定函数，直接从 store 实例解构
 const {
   setSelectedId,
   setHoveredId,
-  hoveredId,
-  selectedId,
   toggleSelection,
   deleteComponent,
   insertComponentTree,
   addComponent,
-  page,
-} = useEditorStore();
+} = editorStore;
 
 const Component = computed(() => getComponent(props.component.type));
 const isContainer = computed(() => isContainerType(props.component.type));
-const isHovered = computed(() => hoveredId === props.component.id);
+const isHovered = computed(() => hoveredId.value === props.component.id);
 
 const handleClick = (e: MouseEvent) => {
   // 锁定的组件不可选中
@@ -147,7 +149,7 @@ const handleDelete = () => {
 
 const handleDuplicate = () => {
   const newComponent = duplicateComponentTree(props.component);
-  const index = page.children.findIndex((c) => c.id === props.component.id);
+  const index = page.value.children.findIndex((c) => c.id === props.component.id);
   // 使用 insertComponentTree 保留子组件结构（addComponent 会忽略 children）
   insertComponentTree(newComponent, 'root', index + 1);
 };

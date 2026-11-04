@@ -62,9 +62,14 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 
-const { history, undo, redo } = useEditorStore();
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { history } = storeToRefs(editorStore);
+// action：是稳定函数，直接从 store 实例解构
+const { undo, redo } = editorStore;
 
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -79,7 +84,7 @@ const formatTime = (timestamp: number) => {
 
 const restoreTo = (index: number) => {
   // 恢复到指定历史版本
-  const steps = history.past.length - index;
+  const steps = history.value.past.length - index;
   for (let i = 0; i < steps; i++) {
     undo();
   }

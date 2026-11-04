@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { generateId } from '@page-builder/shared';
 
@@ -37,7 +38,11 @@ const layoutRecommendations = [
 ];
 
 export function useAIAssistant() {
-  const { addComponent, page, updateComponent } = useEditorStore();
+  const editorStore = useEditorStore();
+  // state：必须用 storeToRefs 保持响应性
+  const { page } = storeToRefs(editorStore);
+  // action：是稳定函数，直接从 store 实例解构
+  const { addComponent, updateComponent } = editorStore;
   const showAIPanel = ref(false);
   const recommendations = ref<AIRecommendation[]>([]);
 
@@ -50,7 +55,7 @@ export function useAIAssistant() {
   // 分析当前页面并给出建议
   const analyzePage = () => {
     const suggestions: AIRecommendation[] = [];
-    const components = page.children;
+    const components = page.value.children;
 
     // 如果没有组件，推荐添加标题
     if (components.length === 0) {
@@ -171,7 +176,7 @@ export function useAIAssistant() {
 
   // 智能优化：自动为缺少间距的组件添加 margin
   const optimizePage = () => {
-    const components = page.children;
+    const components = page.value.children;
     components.forEach((comp) => {
       if (!comp.styles.margin) {
         updateComponent(comp.id, {

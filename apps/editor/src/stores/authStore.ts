@@ -3,14 +3,14 @@ import { ref, computed } from 'vue';
 import * as authApi from '../api/auth';
 import type { UserInfo } from '../api/auth';
 
-const ACCESS_TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
-
 export const useAuthStore = defineStore('auth', () => {
   // --- State ---
-  const accessToken = ref<string | null>(localStorage.getItem(ACCESS_TOKEN_KEY));
-  const refreshToken = ref<string | null>(localStorage.getItem(REFRESH_TOKEN_KEY));
+  // access token 仅存内存，不落 localStorage，避免 XSS 窃取；
+  // 刷新令牌由后端通过 httpOnly Cookie 下发，前端不接触。
+  const accessToken = ref<string | null>(null);
   const user = ref<UserInfo | null>(null);
+  /** 是否已完成首次鉴权引导（用 httpOnly Cookie 静默续期） */
+  const initialized = ref(false);
 
   // --- Getters ---
   const isLoggedIn = computed(() => !!accessToken.value);
@@ -18,27 +18,21 @@ export const useAuthStore = defineStore('auth', () => {
 
   // --- Actions ---
 
-  /** 保存 token 到 state 和 localStorage */
-  function setTokens(access: string, refresh: string) {
+  /** 保存 access token 到内存（刷新令牌由后端 httpOnly Cookie 管理） */
+  function setAccessToken(access: string) {
     accessToken.value = access;
-    refreshToken.value = refresh;
-    localStorage.setItem(ACCESS_TOKEN_KEY, access);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
   }
 
-  /** 清除所有认证状态 */
+  /** 清除所有认证状态（均为内存状态） */
   function clearAuth() {
     accessToken.value = null;
-    refreshToken.value = null;
     user.value = null;
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
   }
 
   /** 登录 */
   async function login(login: string, password: string) {
     const { data } = await authApi.login({ login, password });
-    setTokens(data.data.accessToken, data.data.refreshToken);
+    setAccessToken(data.data.accessToken);
     user.value = data.data.user;
   }
 
@@ -50,7 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
       confirmPassword: password,
       email,
     });
-    setTokens(data.data.accessToken, data.data.refreshToken);
+    setAccessToken(data.data.accessToken);
     user.value = data.data.user;
   }
 
@@ -59,31 +53,44 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data } = await authApi.getUserInfo();
       user.value = data.data;
-    } catch {
+    } catch (error) {
       clearAuth();
-      throw new Error('获取用户信息失败');
+      throw new Error('获取用户信息失败', { cause: error });
     }
   }
 
-  /** 初始化：有 token 但无用户信息时自动获取 */
-  async function initAuth() {
-    if (accessToken.value && !user.value) {
+  /** 刷新 token，返回新的 accessToken（刷新令牌由 httpOnly Cookie 携带） */
+  async function doRefreshToken(): Promise<string> {
+    const { data } = await authApi.refreshToken();
+    setAccessToken(data.data.accessToken);
+    return data.data.accessToken;
+  }
+
+  let bootstrapPromise: Promise<void> | null = null;
+
+  /**
+   * 首次鉴权引导：access token 仅存内存，页面刷新即丢失，
+   * 因此需先用 httpOnly Cookie 静默续期，再拉取用户信息。
+   * 并发调用会复用同一个 Promise。
+   */
+  async function bootstrap(): Promise<void> {
+    if (initialized.value) return;
+    if (bootstrapPromise) return bootstrapPromise;
+
+    bootstrapPromise = (async () => {
       try {
+        await doRefreshToken();
         await fetchUserInfo();
       } catch {
-        // fetchUserInfo 内部已调用 clearAuth
+        // 无有效会话（无 Cookie 或已过期），保持未登录
+        clearAuth();
+      } finally {
+        initialized.value = true;
+        bootstrapPromise = null;
       }
-    }
-  }
+    })();
 
-  /** 刷新 token，返回新的 accessToken */
-  async function doRefreshToken(): Promise<string> {
-    if (!refreshToken.value) {
-      throw new Error('无刷新令牌');
-    }
-    const { data } = await authApi.refreshToken(refreshToken.value);
-    setTokens(data.data.accessToken, data.data.refreshToken);
-    return data.data.accessToken;
+    return bootstrapPromise;
   }
 
   /** 退出登录 */
@@ -97,11 +104,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     accessToken,
-    refreshToken,
     user,
+    initialized,
     isLoggedIn,
     username,
-    initAuth,
+    bootstrap,
+    clearAuth,
     login,
     register,
     fetchUserInfo,

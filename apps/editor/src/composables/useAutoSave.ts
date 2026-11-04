@@ -1,5 +1,6 @@
 import { ref, watch, onUnmounted } from 'vue';
 import type { Ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { deepClone } from '@page-builder/shared';
 import type { PageSchema } from '@page-builder/shared';
@@ -28,7 +29,11 @@ export interface AutoSaveTarget {
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
-  const { page, setPage, saveVersion, isRestoring } = useEditorStore();
+  const editorStore = useEditorStore();
+  // state：必须用 storeToRefs 保持响应性
+  const { page, saveVersion, isRestoring } = storeToRefs(editorStore);
+  // action：是稳定函数，直接从 store 实例解构
+  const { setPage } = editorStore;
 
   /** 供顶栏展示的保存状态 */
   const saveStatus = ref<SaveStatus>('idle');
@@ -51,7 +56,7 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
   // 保存到 localStorage
   const saveToStorage = () => {
     try {
-      const data = JSON.stringify(deepClone(page));
+      const data = JSON.stringify(deepClone(page.value));
       localStorage.setItem(STORAGE_KEY, data);
     } catch (error) {
       logger.error('AutoSave', 'Failed to save to localStorage', error);
@@ -81,7 +86,7 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
         projectId,
         String(pageId.value),
         {
-          schema: deepClone(page) as unknown as Record<string, unknown>,
+          schema: deepClone(page.value) as unknown as Record<string, unknown>,
         },
         { signal },
       );
@@ -102,18 +107,15 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
   // saveVersion 只在用户主动修改时递增，undo/redo 期间 isRestoring 为 true。
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-  watch(
-    () => saveVersion,
-    () => {
-      // undo/redo 恢复期间跳过自动保存
-      if (isRestoring) return;
+  watch(saveVersion, () => {
+    // undo/redo 恢复期间跳过自动保存
+    if (isRestoring.value) return;
 
-      if (saveTimer) {
-        clearTimeout(saveTimer);
-      }
-      saveTimer = setTimeout(saveToAPI, AUTO_SAVE_INTERVAL);
-    },
-  );
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+    }
+    saveTimer = setTimeout(saveToAPI, AUTO_SAVE_INTERVAL);
+  });
 
   // 组件卸载时清理定时器和进行中的请求，防止内存泄漏
   onUnmounted(() => {

@@ -15,7 +15,11 @@ export interface RegisterParams {
 
 export interface TokenData {
   accessToken: string;
-  refreshToken: string;
+  /**
+   * 刷新令牌。前端不再持久化该值：后端应通过 Set-Cookie 下发 httpOnly Cookie。
+   * 字段保留为可选，用于兼容仍返回该字段的旧响应。
+   */
+  refreshToken?: string;
   tokenType: string;
   expiresIn: number;
   user: UserInfo;
@@ -49,9 +53,9 @@ export function logout() {
   return request.post<ApiResponse<null>>('/auth/logout');
 }
 
-/** 刷新 token */
-export function refreshToken(refreshToken: string) {
-  return request.post<ApiResponse<TokenData>>('/auth/refresh', { refreshToken });
+/** 刷新 token（刷新令牌由 httpOnly Cookie 携带，前端无需传参） */
+export function refreshToken() {
+  return request.post<ApiResponse<TokenData>>('/auth/refresh');
 }
 
 /** 获取当前用户信息 */

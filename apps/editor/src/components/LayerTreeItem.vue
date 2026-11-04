@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import type { ComponentSchema } from '@page-builder/shared';
 import { getComponentLabel } from '@page-builder/shared';
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 
 interface Props {
@@ -39,5 +40,9 @@ interface Props {
 
 defineProps<Props>();
 
-const { selectedId, setSelectedId, deleteComponent } = useEditorStore();
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { selectedId } = storeToRefs(editorStore);
+// action：是稳定函数，直接从 store 实例解构
+const { setSelectedId, deleteComponent } = editorStore;
 </script>

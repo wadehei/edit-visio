@@ -31,14 +31,14 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore();
 
+  // access token 仅存内存，页面刷新会丢失：
+  // 首次进入先用 httpOnly Cookie 静默续期，再判断登录状态
+  await authStore.bootstrap();
+
   if (to.meta.requiresAuth !== false && !authStore.isLoggedIn) {
     // 需要登录但未登录 → 跳转到登录页
     next({ name: 'Login', query: { redirect: to.fullPath } });
   } else if (authStore.isLoggedIn) {
-    // 已登录但用户信息未加载 → 先恢复
-    if (!authStore.user) {
-      await authStore.initAuth();
-    }
     if (to.name === 'Login') {
       // 已登录但访问登录页 → 跳转到首页
       next({ name: 'Home' });

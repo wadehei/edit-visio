@@ -33,6 +33,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 
 interface MenuItem {
@@ -43,16 +44,18 @@ interface MenuItem {
   disabled?: boolean;
 }
 
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { page, clipboard } = storeToRefs(editorStore);
+// action：是稳定函数，直接从 store 实例解构
 const {
   setSelectedId,
   deleteComponent,
   moveComponent,
-  page,
   copyComponent,
   pasteComponent,
-  clipboard,
   updateComponent,
-} = useEditorStore();
+} = editorStore;
 
 const visible = ref(false);
 const x = ref(0);
@@ -63,7 +66,7 @@ const menuItems = computed<MenuItem[]>(() => {
   const id = targetComponentId.value;
   if (!id) return [];
 
-  const components = page.children;
+  const components = page.value.children;
   const index = components.findIndex((c) => c.id === id);
   const component = components[index];
   if (!component) return [];
@@ -75,7 +78,7 @@ const menuItems = computed<MenuItem[]>(() => {
       label: '粘贴',
       icon: '📄',
       shortcut: 'Ctrl+V',
-      disabled: clipboard.length === 0,
+      disabled: clipboard.value.length === 0,
     },
     { action: 'duplicate', label: '快速复制', icon: '⧉', shortcut: 'Ctrl+D' },
     { action: 'separator_1', label: '', icon: '' },
@@ -163,7 +166,7 @@ const executeAction = (action: string) => {
   const id = targetComponentId.value;
   if (!id) return;
 
-  const components = page.children;
+  const components = page.value.children;
   const index = components.findIndex((c) => c.id === id);
 
   switch (action) {

@@ -1,19 +1,22 @@
 import { onMounted, onUnmounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { findComponentInTree, duplicateComponentTree, saveAsJSON } from '@page-builder/shared';
 
 export function useKeyboardShortcuts() {
+  const editorStore = useEditorStore();
+  // state：必须用 storeToRefs 保持响应性
+  const { selectedId, page } = storeToRefs(editorStore);
+  // action：是稳定函数，直接从 store 实例解构
   const {
     undo,
     redo,
     deleteComponent,
-    selectedId,
-    page,
     setSelectedId,
     insertComponentTree,
     copyComponent,
     pasteComponent,
-  } = useEditorStore();
+  } = editorStore;
 
   const handleKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
@@ -36,7 +39,7 @@ export function useKeyboardShortcuts() {
     }
 
     // Ctrl/Cmd + C - 复制
-    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId.value) {
       e.preventDefault();
       copyComponent();
     }
@@ -48,25 +51,25 @@ export function useKeyboardShortcuts() {
     }
 
     // Delete / Backspace - 删除选中组件
-    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId.value) {
       e.preventDefault();
       if (confirm('确定要删除这个组件吗？')) {
-        deleteComponent(selectedId);
+        deleteComponent(selectedId.value);
       }
     }
 
     // 方向键 - 选择相邻组件
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
-      const components = page.children;
+      const components = page.value.children;
       if (components.length === 0) return;
 
-      if (!selectedId) {
+      if (!selectedId.value) {
         setSelectedId(components[0].id);
         return;
       }
 
-      const currentIndex = components.findIndex((c) => c.id === selectedId);
+      const currentIndex = components.findIndex((c) => c.id === selectedId.value);
       if (currentIndex === -1) return;
 
       if (e.key === 'ArrowUp' && currentIndex > 0) {
@@ -84,24 +87,24 @@ export function useKeyboardShortcuts() {
     // Ctrl/Cmd + S - 保存
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      saveAsJSON(page);
+      saveAsJSON(page.value);
     }
 
     // Ctrl/Cmd + D - 复制组件（快捷方式）
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedId) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedId.value) {
       e.preventDefault();
       handleDuplicate();
     }
   };
 
   const handleDuplicate = () => {
-    if (!selectedId) return;
+    if (!selectedId.value) return;
 
-    const component = findComponentInTree(page.children, selectedId);
+    const component = findComponentInTree(page.value.children, selectedId.value);
     if (!component) return;
 
     const newComponent = duplicateComponentTree(component);
-    const index = page.children.findIndex((c) => c.id === selectedId);
+    const index = page.value.children.findIndex((c) => c.id === selectedId.value);
 
     // 使用 insertComponentTree 保留子组件结构（addComponent 会忽略 children）
     insertComponentTree(newComponent, 'root', index + 1);

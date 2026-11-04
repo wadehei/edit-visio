@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { getMeta, isContainerType } from '../registry/componentRegistry';
 import type { ComponentMeta } from '@page-builder/shared';
@@ -49,10 +50,14 @@ import ComponentPropsPanel from './property-panel/ComponentPropsPanel.vue';
 import StylePanel from './property-panel/StylePanel.vue';
 import PageConfigPanel from './property-panel/PageConfigPanel.vue';
 
-const { page, selectedId, updateComponent, setPage, getComponentById } = useEditorStore();
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { page, selectedId } = storeToRefs(editorStore);
+// action：是稳定函数，直接从 store 实例解构
+const { updateComponent, setPage, getComponentById } = editorStore;
 
 const selectedComponent = computed(() =>
-  selectedId ? (getComponentById(selectedId) ?? null) : null,
+  selectedId.value ? (getComponentById(selectedId.value) ?? null) : null,
 );
 
 const componentMeta = computed<ComponentMeta | null>(() => {
@@ -92,13 +97,13 @@ const handleStyleChange = (styleName: string, value: string) => {
 };
 
 const handlePageNameChange = (_field: 'name', value: string) => {
-  setPage({ ...page, name: value });
+  setPage({ ...page.value, name: value });
 };
 
 const handlePagePropChange = (field: string, value: string | undefined) => {
   setPage({
-    ...page,
-    props: { ...page.props, [field]: value },
+    ...page.value,
+    props: { ...page.value.props, [field]: value },
   });
 };
 </script>

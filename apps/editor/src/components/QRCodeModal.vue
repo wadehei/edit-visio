@@ -63,12 +63,15 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import QRCode from 'qrcode';
 import { useEditorStore } from '../stores/editorStore';
 import { toast } from '../utils/toast';
 import { logger } from '../utils/logger';
 
-const { page } = useEditorStore();
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { page, saveVersion } = storeToRefs(editorStore);
 
 const showModal = ref(false);
 const qrCodeUrl = ref('');
@@ -86,7 +89,7 @@ const closeModal = () => {
 const generateQRCode = async () => {
   try {
     // 生成预览 URL（实际项目中应该是真实的预览地址）
-    const previewData = JSON.stringify(page);
+    const previewData = JSON.stringify(page.value);
     const encodedData = encodeURIComponent(previewData);
     const url = `${window.location.origin}/preview?data=${encodedData}`;
     previewUrl.value = url;
@@ -119,7 +122,8 @@ const openInNewTab = () => {
   window.open(previewUrl.value, '_blank');
 };
 
-watch(() => page, generateQRCode, { deep: true });
+// 监听 saveVersion（而非 deep watch 整棵组件树），避免深度遍历、性能更优
+watch(saveVersion, generateQRCode);
 
 defineExpose({ openModal });
 </script>

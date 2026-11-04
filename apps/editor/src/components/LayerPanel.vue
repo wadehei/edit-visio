@@ -48,10 +48,15 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { getComponentLabel } from '@page-builder/shared';
 
-const { page, selectedId, setSelectedId, deleteComponent, updateComponent } = useEditorStore();
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { page, selectedId } = storeToRefs(editorStore);
+// action：是稳定函数，直接从 store 实例解构
+const { setSelectedId, deleteComponent, updateComponent } = editorStore;
 
 const toggleVisibility = (id: string, currentVisible: boolean | undefined) => {
   updateComponent(id, { visible: currentVisible === false ? true : false });

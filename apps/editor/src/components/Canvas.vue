@@ -134,6 +134,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { useDevicePreview } from '../composables/useDevicePreview';
 import CanvasComponent from './CanvasComponent.vue';
@@ -141,23 +142,21 @@ import DeviceSwitcher from './DeviceSwitcher.vue';
 import ContextMenu from './ContextMenu.vue';
 import { getMeta } from '../registry/componentRegistry';
 
+const editorStore = useEditorStore();
+// state：必须用 storeToRefs 保持响应性
+const { page, selectedId, canvasScale, canvasOffset, showGrid, snapToGrid, gridSize } =
+  storeToRefs(editorStore);
+// action：是稳定函数，直接从 store 实例解构
 const {
-  page,
-  selectedId,
   setSelectedId,
   addComponent,
   moveComponent,
   setDragging,
-  canvasScale,
-  canvasOffset,
-  showGrid,
-  snapToGrid,
-  gridSize,
   setCanvasScale,
   setCanvasOffset,
   toggleGrid,
   toggleSnapToGrid,
-} = useEditorStore();
+} = editorStore;
 
 const { currentDeviceConfig } = useDevicePreview();
 
@@ -172,16 +171,18 @@ const handleContextMenu = (e: MouseEvent, componentId: string) => {
 const canvasStyles = computed(() => ({
   width: `${currentDeviceConfig.value.width}px`,
   minHeight: `${currentDeviceConfig.value.height}px`,
-  backgroundColor: page.props.backgroundColor,
-  backgroundImage: page.props.backgroundImage ? `url(${page.props.backgroundImage})` : undefined,
+  backgroundColor: page.value.props.backgroundColor,
+  backgroundImage: page.value.props.backgroundImage
+    ? `url(${page.value.props.backgroundImage})`
+    : undefined,
 }));
 
 const zoomIn = () => {
-  setCanvasScale(canvasScale + 0.1);
+  setCanvasScale(canvasScale.value + 0.1);
 };
 
 const zoomOut = () => {
-  setCanvasScale(canvasScale - 0.1);
+  setCanvasScale(canvasScale.value - 0.1);
 };
 
 const resetZoom = () => {
@@ -207,7 +208,7 @@ const handleDrop = (e: DragEvent) => {
 
   if (componentType) {
     const meta = getMeta(componentType);
-    const index = page.children.length;
+    const index = page.value.children.length;
     addComponent(
       componentType,
       'root',

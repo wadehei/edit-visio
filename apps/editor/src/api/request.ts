@@ -21,6 +21,8 @@ const API_TIMEOUT_MS = 15_000;
 const request = axios.create({
   baseURL: API_BASE_URL || '/api/v1',
   timeout: API_TIMEOUT_MS,
+  // 携带 httpOnly Cookie 中的刷新令牌
+  withCredentials: true,
 });
 
 // 请求拦截器：自动附加 Bearer token
@@ -60,8 +62,10 @@ request.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // 401 处理：尝试刷新 token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 401 处理：尝试刷新 token。
+    // 刷新/登录/登出接口自身返回 401 时不重试，避免死循环。
+    const isAuthEndpoint = /\/auth\/(refresh|login|logout)\b/.test(originalRequest.url ?? '');
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
@@ -83,11 +87,13 @@ request.interceptors.response.use(
         onTokenRefreshed(newToken);
         return request(originalRequest);
       } catch (refreshError) {
-        // 刷新失败，跳转登录
+        // 刷新失败：清除内存中的认证状态并跳转登录
         refreshSubscribers = [];
         const authStore = useAuthStore();
-        authStore.logout();
-        window.location.href = '/login';
+        authStore.clearAuth();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
