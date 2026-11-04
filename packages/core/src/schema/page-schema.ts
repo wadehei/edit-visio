@@ -88,7 +88,7 @@ export function deserializePage(json: string): PageSchema {
     return page;
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error('JSON 解析失败');
+      throw new Error('JSON 解析失败', { cause: error });
     }
     throw error;
   }

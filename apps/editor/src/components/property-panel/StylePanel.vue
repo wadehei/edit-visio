@@ -2,18 +2,48 @@
   <!-- 尺寸 -->
   <StyleSection title="尺寸" icon="📐">
     <div class="grid grid-cols-2 gap-2">
-      <StyleField label="宽" :value="styles.width" @change="emitStyleChange('width', $event)" placeholder="auto" />
-      <StyleField label="高" :value="styles.height" @change="emitStyleChange('height', $event)" placeholder="auto" />
-      <StyleField label="最小宽" :value="styles.minWidth" @change="emitStyleChange('minWidth', $event)" placeholder="0" />
-      <StyleField label="最大宽" :value="styles.maxWidth" @change="emitStyleChange('maxWidth', $event)" placeholder="none" />
+      <StyleField
+        label="宽"
+        :value="styles.width"
+        placeholder="auto"
+        @change="emitStyleChange('width', $event)"
+      />
+      <StyleField
+        label="高"
+        :value="styles.height"
+        placeholder="auto"
+        @change="emitStyleChange('height', $event)"
+      />
+      <StyleField
+        label="最小宽"
+        :value="styles.minWidth"
+        placeholder="0"
+        @change="emitStyleChange('minWidth', $event)"
+      />
+      <StyleField
+        label="最大宽"
+        :value="styles.maxWidth"
+        placeholder="none"
+        @change="emitStyleChange('maxWidth', $event)"
+      />
     </div>
   </StyleSection>
 
   <!-- 间距 -->
   <StyleSection title="间距" icon="📏">
     <div class="space-y-2">
-      <StyleField label="内边距 (padding)" :value="styles.padding" @change="emitStyleChange('padding', $event)" placeholder="0px" />
-      <StyleField label="外边距 (margin)" :value="styles.margin" @change="emitStyleChange('margin', $event)" placeholder="0px" />
+      <StyleField
+        label="内边距 (padding)"
+        :value="styles.padding"
+        placeholder="0px"
+        @change="emitStyleChange('padding', $event)"
+      />
+      <StyleField
+        label="外边距 (margin)"
+        :value="styles.margin"
+        placeholder="0px"
+        @change="emitStyleChange('margin', $event)"
+      />
     </div>
   </StyleSection>
 
@@ -21,16 +51,23 @@
   <StyleSection title="排版" icon="🔤">
     <div class="space-y-2">
       <div class="grid grid-cols-2 gap-2">
-        <StyleField label="字号" :value="styles.fontSize" @change="emitStyleChange('fontSize', $event)" placeholder="14px" />
+        <StyleField
+          label="字号"
+          :value="styles.fontSize"
+          placeholder="14px"
+          @change="emitStyleChange('fontSize', $event)"
+        />
         <div>
           <label class="block text-[10px] text-gray-400 mb-0.5">字重</label>
           <select
             :value="styles.fontWeight || ''"
-            @change="emitStyleChange('fontWeight', ($event.target as HTMLSelectElement).value)"
             class="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            @change="emitStyleChange('fontWeight', ($event.target as HTMLSelectElement).value)"
           >
             <option value="">默认</option>
-            <option v-for="w in fontWeightOptions" :key="w.value" :value="w.value">{{ w.label }}</option>
+            <option v-for="w in fontWeightOptions" :key="w.value" :value="w.value">
+              {{ w.label }}
+            </option>
           </select>
         </div>
       </div>
@@ -39,13 +76,23 @@
         <input
           type="color"
           :value="styles.color || '#000000'"
-          @input="emitStyleChange('color', ($event.target as HTMLInputElement).value)"
           class="w-full h-7 border border-gray-200 rounded cursor-pointer"
+          @input="emitStyleChange('color', ($event.target as HTMLInputElement).value)"
         />
       </div>
       <div class="grid grid-cols-2 gap-2">
-        <StyleField label="行高" :value="styles.lineHeight" @change="emitStyleChange('lineHeight', $event)" placeholder="1.5" />
-        <StyleField label="字间距" :value="styles.letterSpacing" @change="emitStyleChange('letterSpacing', $event)" placeholder="normal" />
+        <StyleField
+          label="行高"
+          :value="styles.lineHeight"
+          placeholder="1.5"
+          @change="emitStyleChange('lineHeight', $event)"
+        />
+        <StyleField
+          label="字间距"
+          :value="styles.letterSpacing"
+          placeholder="normal"
+          @change="emitStyleChange('letterSpacing', $event)"
+        />
       </div>
       <div>
         <label class="block text-[10px] text-gray-400 mb-0.5">对齐</label>
@@ -53,11 +100,13 @@
           <button
             v-for="align in textAlignOptions"
             :key="align.value"
-            @click="emitStyleChange('textAlign', align.value)"
             class="flex-1 py-1 text-xs rounded border transition-colors"
-            :class="styles.textAlign === align.value
-              ? 'bg-blue-50 border-blue-300 text-blue-600'
-              : 'border-gray-200 text-gray-500 hover:bg-gray-50'"
+            :class="
+              styles.textAlign === align.value
+                ? 'bg-blue-50 border-blue-300 text-blue-600'
+                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+            "
+            @click="emitStyleChange('textAlign', align.value)"
           >
             {{ align.label }}
           </button>
@@ -70,16 +119,23 @@
   <StyleSection title="边框" icon="🔲">
     <div class="space-y-2">
       <div class="grid grid-cols-3 gap-2">
-        <StyleField label="宽度" :value="styles.borderWidth" @change="emitStyleChange('borderWidth', $event)" placeholder="0px" />
+        <StyleField
+          label="宽度"
+          :value="styles.borderWidth"
+          placeholder="0px"
+          @change="emitStyleChange('borderWidth', $event)"
+        />
         <div>
           <label class="block text-[10px] text-gray-400 mb-0.5">样式</label>
           <select
             :value="styles.borderStyle || ''"
-            @change="emitStyleChange('borderStyle', ($event.target as HTMLSelectElement).value)"
             class="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            @change="emitStyleChange('borderStyle', ($event.target as HTMLSelectElement).value)"
           >
             <option value="">无</option>
-            <option v-for="s in borderStyleOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+            <option v-for="s in borderStyleOptions" :key="s.value" :value="s.value">
+              {{ s.label }}
+            </option>
           </select>
         </div>
         <div>
@@ -87,12 +143,17 @@
           <input
             type="color"
             :value="styles.borderColor || '#000000'"
-            @input="emitStyleChange('borderColor', ($event.target as HTMLInputElement).value)"
             class="w-full h-7 border border-gray-200 rounded cursor-pointer"
+            @input="emitStyleChange('borderColor', ($event.target as HTMLInputElement).value)"
           />
         </div>
       </div>
-      <StyleField label="圆角" :value="styles.borderRadius" @change="emitStyleChange('borderRadius', $event)" placeholder="0px" />
+      <StyleField
+        label="圆角"
+        :value="styles.borderRadius"
+        placeholder="0px"
+        @change="emitStyleChange('borderRadius', $event)"
+      />
     </div>
   </StyleSection>
 
@@ -104,11 +165,16 @@
         <input
           type="color"
           :value="styles.backgroundColor || '#ffffff'"
-          @input="emitStyleChange('backgroundColor', ($event.target as HTMLInputElement).value)"
           class="w-full h-7 border border-gray-200 rounded cursor-pointer"
+          @input="emitStyleChange('backgroundColor', ($event.target as HTMLInputElement).value)"
         />
       </div>
-      <StyleField label="背景图片" :value="styles.backgroundImage" @change="emitStyleChange('backgroundImage', $event)" placeholder="url(...)" />
+      <StyleField
+        label="背景图片"
+        :value="styles.backgroundImage"
+        placeholder="url(...)"
+        @change="emitStyleChange('backgroundImage', $event)"
+      />
     </div>
   </StyleSection>
 
@@ -116,18 +182,25 @@
   <StyleSection title="效果" icon="✨">
     <div class="space-y-2">
       <div>
-        <label class="block text-[10px] text-gray-400 mb-0.5">透明度: {{ styles.opacity || '1' }}</label>
+        <label class="block text-[10px] text-gray-400 mb-0.5"
+          >透明度: {{ styles.opacity || '1' }}</label
+        >
         <input
           type="range"
           min="0"
           max="1"
           step="0.05"
           :value="styles.opacity || '1'"
-          @input="emitStyleChange('opacity', ($event.target as HTMLInputElement).value)"
           class="w-full h-1.5 accent-blue-500"
+          @input="emitStyleChange('opacity', ($event.target as HTMLInputElement).value)"
         />
       </div>
-      <StyleField label="阴影" :value="styles.boxShadow" @change="emitStyleChange('boxShadow', $event)" placeholder="none" />
+      <StyleField
+        label="阴影"
+        :value="styles.boxShadow"
+        placeholder="none"
+        @change="emitStyleChange('boxShadow', $event)"
+      />
     </div>
   </StyleSection>
 
@@ -138,8 +211,8 @@
         <label class="block text-[10px] text-gray-400 mb-0.5">显示方式</label>
         <select
           :value="styles.display || ''"
-          @change="emitStyleChange('display', ($event.target as HTMLSelectElement).value)"
           class="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          @change="emitStyleChange('display', ($event.target as HTMLSelectElement).value)"
         >
           <option value="">默认</option>
           <option v-for="d in displayOptions" :key="d.value" :value="d.value">{{ d.label }}</option>
@@ -150,36 +223,47 @@
           <label class="block text-[10px] text-gray-400 mb-0.5">方向</label>
           <select
             :value="styles.flexDirection || ''"
-            @change="emitStyleChange('flexDirection', ($event.target as HTMLSelectElement).value)"
             class="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            @change="emitStyleChange('flexDirection', ($event.target as HTMLSelectElement).value)"
           >
             <option value="">默认</option>
-            <option v-for="dir in flexDirectionOptions" :key="dir.value" :value="dir.value">{{ dir.label }}</option>
+            <option v-for="dir in flexDirectionOptions" :key="dir.value" :value="dir.value">
+              {{ dir.label }}
+            </option>
           </select>
         </div>
-        <StyleField label="间距" :value="styles.gap" @change="emitStyleChange('gap', $event)" placeholder="0px" />
+        <StyleField
+          label="间距"
+          :value="styles.gap"
+          placeholder="0px"
+          @change="emitStyleChange('gap', $event)"
+        />
       </div>
       <div v-if="styles.display === 'flex'" class="grid grid-cols-2 gap-2">
         <div>
           <label class="block text-[10px] text-gray-400 mb-0.5">主轴对齐</label>
           <select
             :value="styles.justifyContent || ''"
-            @change="emitStyleChange('justifyContent', ($event.target as HTMLSelectElement).value)"
             class="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            @change="emitStyleChange('justifyContent', ($event.target as HTMLSelectElement).value)"
           >
             <option value="">默认</option>
-            <option v-for="j in justifyContentOptions" :key="j.value" :value="j.value">{{ j.label }}</option>
+            <option v-for="j in justifyContentOptions" :key="j.value" :value="j.value">
+              {{ j.label }}
+            </option>
           </select>
         </div>
         <div>
           <label class="block text-[10px] text-gray-400 mb-0.5">交叉轴对齐</label>
           <select
             :value="styles.alignItems || ''"
-            @change="emitStyleChange('alignItems', ($event.target as HTMLSelectElement).value)"
             class="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            @change="emitStyleChange('alignItems', ($event.target as HTMLSelectElement).value)"
           >
             <option value="">默认</option>
-            <option v-for="a in alignItemsOptions" :key="a.value" :value="a.value">{{ a.label }}</option>
+            <option v-for="a in alignItemsOptions" :key="a.value" :value="a.value">
+              {{ a.label }}
+            </option>
           </select>
         </div>
       </div>

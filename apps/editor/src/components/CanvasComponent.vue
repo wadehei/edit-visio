@@ -27,11 +27,7 @@
       {{ getComponentLabel(component) }}
     </div>
 
-    <component
-      :is="Component"
-      v-if="Component"
-      :schema="component"
-    >
+    <component :is="Component" v-if="Component" :schema="component">
       <div
         v-if="isContainer && component.children && component.children.length > 0"
         class="space-y-2"
@@ -48,21 +44,21 @@
         class="flex flex-col items-center justify-center p-8 text-gray-400 text-xs border-2 border-dashed border-gray-300 rounded transition-colors hover:border-blue-400 hover:bg-blue-50"
       >
         <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+          />
         </svg>
         <span>拖拽组件到此处</span>
       </div>
     </component>
-    <div v-else class="p-4 bg-red-100 text-red-600 text-sm">
-      未知组件: {{ component.type }}
-    </div>
+    <div v-else class="p-4 bg-red-100 text-red-600 text-sm">未知组件: {{ component.type }}</div>
 
     <!-- 操作按钮 -->
     <Transition name="fade">
-      <div
-        v-if="isSelected"
-        class="absolute -top-6 right-0 flex gap-1 z-20"
-      >
+      <div v-if="isSelected" class="absolute -top-6 right-0 flex gap-1 z-20">
         <button
           class="w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-xs transition-colors"
           title="复制"
@@ -106,11 +102,21 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const { setSelectedId, setHoveredId, hoveredId, selectedId, toggleSelection, deleteComponent, insertComponentTree, page } = useEditorStore();
+const {
+  setSelectedId,
+  setHoveredId,
+  hoveredId,
+  selectedId,
+  toggleSelection,
+  deleteComponent,
+  insertComponentTree,
+  addComponent,
+  page,
+} = useEditorStore();
 
 const Component = computed(() => getComponent(props.component.type));
 const isContainer = computed(() => isContainerType(props.component.type));
-const isHovered = computed(() => hoveredId.value === props.component.id);
+const isHovered = computed(() => hoveredId === props.component.id);
 
 const handleClick = (e: MouseEvent) => {
   // 锁定的组件不可选中
@@ -141,7 +147,7 @@ const handleDelete = () => {
 
 const handleDuplicate = () => {
   const newComponent = duplicateComponentTree(props.component);
-  const index = page.value.children.findIndex(c => c.id === props.component.id);
+  const index = page.children.findIndex((c) => c.id === props.component.id);
   // 使用 insertComponentTree 保留子组件结构（addComponent 会忽略 children）
   insertComponentTree(newComponent, 'root', index + 1);
 };

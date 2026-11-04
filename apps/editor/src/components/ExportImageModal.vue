@@ -14,11 +14,13 @@
             <button
               v-for="format in formats"
               :key="format.value"
-              @click="selectedFormat = format.value"
               class="px-4 py-3 border-2 rounded-lg text-sm transition-all"
-              :class="selectedFormat === format.value
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+              :class="
+                selectedFormat === format.value
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              "
+              @click="selectedFormat = format.value"
             >
               {{ format.label }}
             </button>
@@ -54,15 +56,15 @@
 
       <div class="flex gap-2 mt-6">
         <button
-          @click="closeModal"
           class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+          @click="closeModal"
         >
           取消
         </button>
         <button
-          @click="exportImage"
           :disabled="exporting"
           class="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          @click="exportImage"
         >
           {{ exporting ? '导出中...' : '导出' }}
         </button>
@@ -73,11 +75,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useEditorStore } from '../stores/editorStore';
 import { toast } from '../utils/toast';
 import { logger } from '../utils/logger';
-
-const { page } = useEditorStore();
 
 const showModal = ref(false);
 const selectedFormat = ref<'png' | 'jpeg' | 'svg'>('png');
@@ -105,7 +104,10 @@ const exportImage = async () => {
   try {
     // 这里应该使用 html2canvas 或类似库
     // 为了简化，我们使用一个模拟的导出
-    toast(`导出功能开发中... 格式: ${selectedFormat.value.toUpperCase()}, 质量: ${quality.value}%`, 'info');
+    toast(
+      `导出功能开发中... 格式: ${selectedFormat.value.toUpperCase()}, 质量: ${quality.value}%`,
+      'info',
+    );
 
     // 实际实现需要：
     // 1. 使用 html2canvas 捕获画布

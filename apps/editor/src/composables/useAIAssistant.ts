@@ -12,24 +12,9 @@ export interface AIRecommendation {
 
 // 智能文案模板
 const textTemplates = {
-  hero: [
-    '欢迎来到我们的产品',
-    '开启全新体验',
-    '创新改变生活',
-    '品质成就未来',
-  ],
-  cta: [
-    '立即开始',
-    '了解更多',
-    '免费试用',
-    '联系我们',
-  ],
-  feature: [
-    '简单易用',
-    '安全可靠',
-    '性能卓越',
-    '专业服务',
-  ],
+  hero: ['欢迎来到我们的产品', '开启全新体验', '创新改变生活', '品质成就未来'],
+  cta: ['立即开始', '了解更多', '免费试用', '联系我们'],
+  feature: ['简单易用', '安全可靠', '性能卓越', '专业服务'],
 };
 
 // 布局推荐
@@ -65,7 +50,7 @@ export function useAIAssistant() {
   // 分析当前页面并给出建议
   const analyzePage = () => {
     const suggestions: AIRecommendation[] = [];
-    const components = page.value.children;
+    const components = page.children;
 
     // 如果没有组件，推荐添加标题
     if (components.length === 0) {
@@ -75,22 +60,28 @@ export function useAIAssistant() {
         title: '添加页面标题',
         description: '一个好的标题能吸引用户注意力',
         action: () => {
-          addComponent('text', 'root', 0, {
-            content: generateText('hero'),
-            color: '#000000',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            textAlign: 'center',
-          }, {
-            padding: '24px',
-            margin: '0 0 16px 0',
-          });
+          addComponent(
+            'text',
+            'root',
+            0,
+            {
+              content: generateText('hero'),
+              color: '#000000',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+            {
+              padding: '24px',
+              margin: '0 0 16px 0',
+            },
+          );
         },
       });
     }
 
     // 如果没有按钮，推荐添加 CTA
-    const hasButton = components.some(c => c.type === 'button');
+    const hasButton = components.some((c) => c.type === 'button');
     if (!hasButton && components.length > 0) {
       suggestions.push({
         id: generateId(),
@@ -98,20 +89,26 @@ export function useAIAssistant() {
         title: '添加行动按钮',
         description: '引导用户采取行动',
         action: () => {
-          addComponent('button', 'root', components.length, {
-            text: generateText('cta'),
-            type: 'primary',
-            size: 'large',
-            block: true,
-          }, {
-            margin: '16px',
-          });
+          addComponent(
+            'button',
+            'root',
+            components.length,
+            {
+              text: generateText('cta'),
+              type: 'primary',
+              size: 'large',
+              block: true,
+            },
+            {
+              margin: '16px',
+            },
+          );
         },
       });
     }
 
     // 如果没有图片，推荐添加
-    const hasImage = components.some(c => c.type === 'image');
+    const hasImage = components.some((c) => c.type === 'image');
     if (!hasImage && components.length > 0) {
       suggestions.push({
         id: generateId(),
@@ -119,13 +116,19 @@ export function useAIAssistant() {
         title: '添加图片',
         description: '图片能让页面更生动',
         action: () => {
-          addComponent('image', 'root', 1, {
-            src: 'https://via.placeholder.com/375x200',
-            alt: '配图',
-            width: '100%',
-            height: '200px',
-            objectFit: 'cover',
-          }, {});
+          addComponent(
+            'image',
+            'root',
+            1,
+            {
+              src: 'https://via.placeholder.com/375x200',
+              alt: '配图',
+              width: '100%',
+              height: '200px',
+              objectFit: 'cover',
+            },
+            {},
+          );
         },
       });
     }
@@ -168,7 +171,7 @@ export function useAIAssistant() {
 
   // 智能优化：自动为缺少间距的组件添加 margin
   const optimizePage = () => {
-    const components = page.value.children;
+    const components = page.children;
     components.forEach((comp) => {
       if (!comp.styles.margin) {
         updateComponent(comp.id, {

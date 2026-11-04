@@ -4,10 +4,17 @@
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
     @click.self="closeModal"
   >
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col"
+    >
+      <div
+        class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+      >
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">项目管理</h2>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <button
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          @click="closeModal"
+        >
           ×
         </button>
       </div>
@@ -16,8 +23,8 @@
         <!-- 创建新项目 -->
         <div class="mb-6">
           <button
-            @click="showCreateDialog = true"
             class="w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 transition-colors flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-500"
+            @click="showCreateDialog = true"
           >
             <Plus :size="20" />
             创建新项目
@@ -46,37 +53,39 @@
               </div>
               <div class="flex gap-1">
                 <button
-                  @click="editProject(project)"
                   class="p-1 text-gray-400 hover:text-blue-500"
                   title="编辑"
+                  @click="editProject(project)"
                 >
                   <Edit :size="16" />
                 </button>
                 <button
-                  @click="duplicateProject(project.id)"
                   class="p-1 text-gray-400 hover:text-green-500"
                   title="复制"
+                  @click="duplicateProject(project.id)"
                 >
                   <Copy :size="16" />
                 </button>
                 <button
-                  @click="deleteProjectConfirm(project.id)"
                   class="p-1 text-gray-400 hover:text-red-500"
                   title="删除"
+                  @click="deleteProjectConfirm(project.id)"
                 >
                   <Trash2 :size="16" />
                 </button>
               </div>
             </div>
 
-            <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
+            <div
+              class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3"
+            >
               <span>{{ project.pages.length }} 个页面</span>
               <span>{{ formatDate(project.updatedAt) }}</span>
             </div>
 
             <button
-              @click="openProject(project.id)"
               class="w-full px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+              @click="openProject(project.id)"
             >
               打开项目
             </button>
@@ -116,14 +125,14 @@
           </div>
           <div class="flex gap-2 mt-6">
             <button
-              @click="closeDialogs"
               class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              @click="closeDialogs"
             >
               取消
             </button>
             <button
-              @click="saveProject"
               class="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              @click="saveProject"
             >
               保存
             </button>
@@ -137,7 +146,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Plus, Edit, Copy, Trash2 } from 'lucide-vue-next';
-import { useProjectManager } from '../composables/useProjectManager';
+import { useProjectManager, type Project } from '../composables/useProjectManager';
 
 const {
   projects,
@@ -173,7 +182,7 @@ const closeDialogs = () => {
   projectForm.value = { name: '', description: '' };
 };
 
-const editProject = (project: any) => {
+const editProject = (project: Project) => {
   editingProjectId.value = project.id;
   projectForm.value = {
     name: project.name,

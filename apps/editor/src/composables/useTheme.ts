@@ -66,9 +66,8 @@ export function useTheme() {
   }
 
   // 监听系统主题变化（组件卸载时清理，防止内存泄漏）
-  const mediaQuery = typeof window !== 'undefined'
-    ? window.matchMedia('(prefers-color-scheme: dark)')
-    : null;
+  const mediaQuery =
+    typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
   const handleSystemThemeChange = () => {
     if (themeConfig.value.mode === 'system') {

@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -30,7 +31,7 @@ interface ProgressProps {
   valueColor?: string;
 }
 
-const progressProps = computed(() => props.schema.props as ProgressProps);
+const progressProps = computed(() => props.schema.props as unknown as ProgressProps);
 
 const value = computed(() => Math.min(100, Math.max(0, progressProps.value.value || 0)));
 const label = computed(() => progressProps.value.label);
@@ -42,9 +43,9 @@ const borderRadius = computed(() => progressProps.value.borderRadius || '4px');
 const labelColor = computed(() => progressProps.value.labelColor || '#374151');
 const valueColor = computed(() => progressProps.value.valueColor || '#6b7280');
 
-const progressStyles = computed(() => ({
+const progressStyles = computed<CSSProperties>(() => ({
   width: '100%',
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 
 const labelStyles = computed(() => ({
@@ -69,7 +70,7 @@ const fillStyles = computed(() => ({
   transition: 'width 0.3s ease',
 }));
 
-const valueStyles = computed(() => ({
+const valueStyles = computed<CSSProperties>(() => ({
   color: valueColor.value,
   fontSize: '12px',
   marginTop: '4px',

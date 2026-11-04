@@ -66,8 +66,17 @@ export function createPage(projectId: string, params: CreatePageParams) {
 }
 
 /** 保存页面 schema（编辑器内容） */
-export function savePageSchema(projectId: string, pageId: string, params: SavePageSchemaParams) {
-  return request.put<ApiResponse<PageVO>>(`/projects/${projectId}/pages/${pageId}/schema`, params);
+export function savePageSchema(
+  projectId: string,
+  pageId: string,
+  params: SavePageSchemaParams,
+  config?: { signal?: AbortSignal },
+) {
+  return request.put<ApiResponse<PageVO>>(
+    `/projects/${projectId}/pages/${pageId}/schema`,
+    params,
+    config,
+  );
 }
 
 /** 删除页面 */

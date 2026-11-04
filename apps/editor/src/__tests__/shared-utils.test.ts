@@ -11,7 +11,7 @@ import {
   findComponentInTree,
   escapeHTML,
 } from '@page-builder/shared';
-import type { ComponentSchema, PageSchema } from '@page-builder/shared';
+import type { ComponentSchema } from '@page-builder/shared';
 
 // ========== generateId ==========
 
@@ -235,11 +235,30 @@ describe('getComponentLabel', () => {
   });
 
   it('should return type name for unknown component types', () => {
-    expect(getComponentLabel({ id: '1', type: 'unknown-type', props: {}, styles: {} })).toBe('unknown-type');
+    expect(getComponentLabel({ id: '1', type: 'unknown-type', props: {}, styles: {} })).toBe(
+      'unknown-type',
+    );
   });
 
   it('should include all registered component types', () => {
-    const types = ['text', 'button', 'image', 'container', 'divider', 'spacer', 'card', 'badge', 'richText', 'input', 'video', 'audio', 'map', 'carousel', 'countdown', 'progress'];
+    const types = [
+      'text',
+      'button',
+      'image',
+      'container',
+      'divider',
+      'spacer',
+      'card',
+      'badge',
+      'richText',
+      'input',
+      'video',
+      'audio',
+      'map',
+      'carousel',
+      'countdown',
+      'progress',
+    ];
     types.forEach((type) => {
       const label = getComponentLabel({ id: '1', type, props: {}, styles: {} });
       expect(label).not.toBe(type); // Should have emoji prefix, not just the raw type
@@ -302,7 +321,7 @@ describe('duplicateComponentTree', () => {
 describe('escapeHTML', () => {
   it('should escape all dangerous HTML characters', () => {
     expect(escapeHTML('<script>alert("xss")</script>')).toBe(
-      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
     );
   });
 

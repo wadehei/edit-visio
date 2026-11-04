@@ -4,12 +4,12 @@
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
     @click.self="closeModal"
   >
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+    <div
+      class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col"
+    >
       <div class="p-4 border-b border-gray-200 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-gray-800">选择模板</h2>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
-          ×
-        </button>
+        <button class="text-gray-400 hover:text-gray-600" @click="closeModal">×</button>
       </div>
       <div class="flex-1 overflow-y-auto p-4">
         <div class="grid grid-cols-2 gap-4">

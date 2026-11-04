@@ -1,13 +1,10 @@
 <template>
-  <img
-    :src="src || 'https://via.placeholder.com/300x200'"
-    :alt="alt"
-    :style="imageStyles"
-  />
+  <img :src="src || 'https://via.placeholder.com/300x200'" :alt="alt" :style="imageStyles" />
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -25,7 +22,7 @@ interface ImageProps {
   borderRadius?: string;
 }
 
-const imageProps = computed(() => props.schema.props as ImageProps);
+const imageProps = computed(() => props.schema.props as unknown as ImageProps);
 
 const src = computed(() => imageProps.value.src);
 const alt = computed(() => imageProps.value.alt || '');
@@ -34,12 +31,12 @@ const height = computed(() => imageProps.value.height || 'auto');
 const objectFit = computed(() => imageProps.value.objectFit || 'cover');
 const borderRadius = computed(() => imageProps.value.borderRadius || '0');
 
-const imageStyles = computed(() => ({
+const imageStyles = computed<CSSProperties>(() => ({
   width: width.value,
   height: height.value,
   objectFit: objectFit.value,
   borderRadius: borderRadius.value,
   display: 'block',
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 </script>

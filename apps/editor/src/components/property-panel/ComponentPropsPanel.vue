@@ -9,41 +9,44 @@
           type="text"
           :value="getPropValue(propDef.name)"
           :placeholder="propDef.placeholder"
-          @input="emitPropChange(propDef.name, ($event.target as HTMLInputElement).value)"
           class="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          @input="emitPropChange(propDef.name, ($event.target as HTMLInputElement).value)"
         />
 
         <textarea
           v-else-if="propDef.type === 'textarea'"
-          :value="getPropValue(propDef.name)"
+          :value="getPropString(propDef.name)"
           :placeholder="propDef.placeholder"
-          @input="emitPropChange(propDef.name, ($event.target as HTMLTextAreaElement).value)"
           class="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
           rows="2"
+          @input="emitPropChange(propDef.name, ($event.target as HTMLTextAreaElement).value)"
         />
 
         <input
           v-else-if="propDef.type === 'number'"
           type="number"
           :value="getPropValue(propDef.name)"
-          @input="emitPropChange(propDef.name, Number(($event.target as HTMLInputElement).value))"
           class="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          @input="emitPropChange(propDef.name, Number(($event.target as HTMLInputElement).value))"
         />
 
         <input
           v-else-if="propDef.type === 'color'"
           type="color"
           :value="getPropValue(propDef.name)"
-          @input="emitPropChange(propDef.name, ($event.target as HTMLInputElement).value)"
           class="w-full h-7 border border-gray-200 rounded cursor-pointer"
+          @input="emitPropChange(propDef.name, ($event.target as HTMLInputElement).value)"
         />
 
-        <label v-else-if="propDef.type === 'boolean'" class="flex items-center gap-2 cursor-pointer">
+        <label
+          v-else-if="propDef.type === 'boolean'"
+          class="flex items-center gap-2 cursor-pointer"
+        >
           <input
             type="checkbox"
-            :checked="getPropValue(propDef.name)"
-            @change="emitPropChange(propDef.name, ($event.target as HTMLInputElement).checked)"
+            :checked="getPropChecked(propDef.name)"
             class="rounded"
+            @change="emitPropChange(propDef.name, ($event.target as HTMLInputElement).checked)"
           />
           <span class="text-xs text-gray-600">{{ propDef.label }}</span>
         </label>
@@ -51,8 +54,8 @@
         <select
           v-else-if="propDef.type === 'select'"
           :value="getPropValue(propDef.name)"
-          @change="emitPropChange(propDef.name, ($event.target as HTMLSelectElement).value)"
           class="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          @change="emitPropChange(propDef.name, ($event.target as HTMLSelectElement).value)"
         >
           <option v-for="option in propDef.options" :key="option.value" :value="option.value">
             {{ option.label }}
@@ -64,8 +67,8 @@
           type="text"
           :value="getPropValue(propDef.name)"
           placeholder="https://example.com/image.jpg"
-          @input="emitPropChange(propDef.name, ($event.target as HTMLInputElement).value)"
           class="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          @input="emitPropChange(propDef.name, ($event.target as HTMLInputElement).value)"
         />
       </div>
     </div>
@@ -87,6 +90,17 @@ const emit = defineEmits<{
 
 const getPropValue = (propName: string): unknown => {
   return props.componentProps[propName];
+};
+
+/** 文本类绑定需要 string 类型：将未知取值收窄为字符串 */
+const getPropString = (propName: string): string => {
+  const value = props.componentProps[propName];
+  return value == null ? '' : String(value);
+};
+
+/** 布尔类绑定需要 boolean 类型：将未知取值收窄为布尔值 */
+const getPropChecked = (propName: string): boolean => {
+  return Boolean(props.componentProps[propName]);
 };
 
 const emitPropChange = (propName: string, value: unknown) => {

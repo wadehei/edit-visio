@@ -1,8 +1,8 @@
 <template>
   <div class="border-b border-gray-100">
     <button
-      @click="isOpen = !isOpen"
       class="w-full px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left"
+      @click="isOpen = !isOpen"
     >
       <span class="text-xs">{{ icon }}</span>
       <span class="text-xs font-medium text-gray-700 flex-1">{{ title }}</span>

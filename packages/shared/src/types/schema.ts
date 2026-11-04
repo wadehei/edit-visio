@@ -92,16 +92,21 @@ export interface ComponentPropsMap {
   spacer: SpacerProps;
 }
 
+/** 按组件 type 解析对应的 Props 类型 */
+export type ComponentPropsFor<T extends string> = T extends keyof ComponentPropsMap
+  ? ComponentPropsMap[T]
+  : Record<string, unknown>;
+
 /**
  * 安全获取组件 props（带默认值）
  * 避免在导出/渲染代码中使用 as any
  */
 export function getComponentProps<T extends string>(
   component: ComponentSchema,
-  type: T,
-  defaults: T extends keyof ComponentPropsMap ? ComponentPropsMap[T] : Record<string, unknown>
-): T extends keyof ComponentPropsMap ? ComponentPropsMap[T] : Record<string, unknown> {
-  return { ...defaults, ...component.props } as any;
+  _type: T,
+  defaults: ComponentPropsFor<T>,
+): ComponentPropsFor<T> {
+  return { ...defaults, ...component.props } as unknown as ComponentPropsFor<T>;
 }
 
 // 事件配置

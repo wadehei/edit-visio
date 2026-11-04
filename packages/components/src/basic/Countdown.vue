@@ -3,10 +3,7 @@
     <div class="flex items-center justify-center gap-2">
       <div v-for="(unit, index) in timeUnits" :key="index" class="flex items-center gap-2">
         <div class="flex flex-col items-center">
-          <div
-            :style="numberStyles"
-            class="flex items-center justify-center font-bold"
-          >
+          <div :style="numberStyles" class="flex items-center justify-center font-bold">
             {{ unit.value }}
           </div>
           <div class="text-xs mt-1" :style="labelStyles">
@@ -21,6 +18,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -41,9 +39,11 @@ interface CountdownProps {
   borderRadius?: string;
 }
 
-const countdownProps = computed(() => props.schema.props as CountdownProps);
+const countdownProps = computed(() => props.schema.props as unknown as CountdownProps);
 
-const targetDate = computed(() => new Date(countdownProps.value.targetDate || Date.now() + 86400000));
+const targetDate = computed(
+  () => new Date(countdownProps.value.targetDate || Date.now() + 86400000),
+);
 const backgroundColor = computed(() => countdownProps.value.backgroundColor || '#f3f4f6');
 const numberColor = computed(() => countdownProps.value.numberColor || '#ffffff');
 const numberSize = computed(() => countdownProps.value.numberSize || '24px');
@@ -69,11 +69,11 @@ const timeUnits = computed(() => [
   { value: remainingTime.value.seconds.toString().padStart(2, '0'), label: '秒' },
 ]);
 
-const countdownStyles = computed(() => ({
+const countdownStyles = computed<CSSProperties>(() => ({
   backgroundColor: backgroundColor.value,
   padding: padding.value,
   borderRadius: borderRadius.value,
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 
 const numberStyles = computed(() => ({

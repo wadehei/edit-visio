@@ -1,10 +1,6 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useEditorStore } from '../stores/editorStore';
-import {
-  findComponentInTree,
-  duplicateComponentTree,
-  saveAsJSON,
-} from '@page-builder/shared';
+import { findComponentInTree, duplicateComponentTree, saveAsJSON } from '@page-builder/shared';
 
 export function useKeyboardShortcuts() {
   const {
@@ -21,9 +17,8 @@ export function useKeyboardShortcuts() {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
-    const isInput = target.tagName === 'INPUT' ||
-                    target.tagName === 'TEXTAREA' ||
-                    target.isContentEditable;
+    const isInput =
+      target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
     // 如果在输入框中，不处理快捷键
     if (isInput) return;
@@ -41,7 +36,7 @@ export function useKeyboardShortcuts() {
     }
 
     // Ctrl/Cmd + C - 复制
-    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId.value) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId) {
       e.preventDefault();
       copyComponent();
     }
@@ -53,25 +48,25 @@ export function useKeyboardShortcuts() {
     }
 
     // Delete / Backspace - 删除选中组件
-    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId.value) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
       e.preventDefault();
       if (confirm('确定要删除这个组件吗？')) {
-        deleteComponent(selectedId.value);
+        deleteComponent(selectedId);
       }
     }
 
     // 方向键 - 选择相邻组件
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
-      const components = page.value.children;
+      const components = page.children;
       if (components.length === 0) return;
 
-      if (!selectedId.value) {
+      if (!selectedId) {
         setSelectedId(components[0].id);
         return;
       }
 
-      const currentIndex = components.findIndex(c => c.id === selectedId.value);
+      const currentIndex = components.findIndex((c) => c.id === selectedId);
       if (currentIndex === -1) return;
 
       if (e.key === 'ArrowUp' && currentIndex > 0) {
@@ -89,24 +84,24 @@ export function useKeyboardShortcuts() {
     // Ctrl/Cmd + S - 保存
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      saveAsJSON(page.value);
+      saveAsJSON(page);
     }
 
     // Ctrl/Cmd + D - 复制组件（快捷方式）
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedId.value) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedId) {
       e.preventDefault();
       handleDuplicate();
     }
   };
 
   const handleDuplicate = () => {
-    if (!selectedId.value) return;
+    if (!selectedId) return;
 
-    const component = findComponentInTree(page.value.children, selectedId.value);
+    const component = findComponentInTree(page.children, selectedId);
     if (!component) return;
 
     const newComponent = duplicateComponentTree(component);
-    const index = page.value.children.findIndex(c => c.id === selectedId.value);
+    const index = page.children.findIndex((c) => c.id === selectedId);
 
     // 使用 insertComponentTree 保留子组件结构（addComponent 会忽略 children）
     insertComponentTree(newComponent, 'root', index + 1);

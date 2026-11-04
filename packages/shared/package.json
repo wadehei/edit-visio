@@ -12,10 +12,8 @@
     }
   },
   "scripts": {
-    "lint": "eslint src --ext .ts,.tsx",
-    "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "clean": "rm -rf dist node_modules"
   },
   "devDependencies": {

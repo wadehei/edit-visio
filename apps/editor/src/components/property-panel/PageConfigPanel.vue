@@ -4,15 +4,15 @@
       <h2 class="text-sm font-semibold text-gray-800">页面配置</h2>
     </div>
     <div class="flex-1 overflow-y-auto">
-      <StyleSection title="基本信息" icon="📄" :defaultOpen="true">
+      <StyleSection title="基本信息" icon="📄" :default-open="true">
         <div class="space-y-2">
           <div>
             <label class="block text-[10px] text-gray-400 mb-0.5">页面名称</label>
             <input
               type="text"
               :value="page.name"
-              @input="emitPageChange('name', ($event.target as HTMLInputElement).value)"
               class="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+              @input="emitPageChange('name', ($event.target as HTMLInputElement).value)"
             />
           </div>
           <div>
@@ -20,8 +20,8 @@
             <input
               type="text"
               :value="page.props.title"
-              @input="emitPagePropChange('title', ($event.target as HTMLInputElement).value)"
               class="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+              @input="emitPagePropChange('title', ($event.target as HTMLInputElement).value)"
             />
           </div>
         </div>
@@ -34,20 +34,22 @@
             <input
               type="color"
               :value="page.props.backgroundColor"
-              @input="emitPagePropChange('backgroundColor', ($event.target as HTMLInputElement).value)"
               class="w-full h-7 border border-gray-200 rounded cursor-pointer"
+              @input="
+                emitPagePropChange('backgroundColor', ($event.target as HTMLInputElement).value)
+              "
             />
           </div>
           <StyleField
             label="背景图片"
             :value="page.props.backgroundImage || ''"
-            @change="handleBackgroundImageChange"
             placeholder="https://example.com/bg.jpg"
+            @change="handleBackgroundImageChange"
           />
         </div>
       </StyleSection>
 
-      <StyleSection title="图层结构" icon="📑" :defaultOpen="true">
+      <StyleSection title="图层结构" icon="📑" :default-open="true">
         <LayerPanel />
       </StyleSection>
     </div>

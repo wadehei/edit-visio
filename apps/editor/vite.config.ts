@@ -74,11 +74,34 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   server: {
     port: 3000,
     open: true,
+  },
+  build: {
+    target: 'es2020',
+    sourcemap: false,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/[\\/]node_modules[\\/](vue|vue-router|pinia|@vue)[\\/]/.test(id))
+            return 'vue-vendor';
+          if (/[\\/]node_modules[\\/]lucide-vue-next[\\/]/.test(id)) return 'ui-vendor';
+          if (/[\\/]node_modules[\\/](axios|dompurify|qrcode)[\\/]/.test(id)) return 'utils-vendor';
+          if (/[\\/]node_modules[\\/](vue-draggable-plus|sortablejs)[\\/]/.test(id))
+            return 'drag-vendor';
+          return undefined;
+        },
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        entryFileNames: 'assets/js/[name]-[hash].js',
+        assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
+      },
+    },
   },
 });

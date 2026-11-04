@@ -6,31 +6,23 @@
         class="flex transition-transform duration-500 ease-in-out"
         :style="{ transform: `translateX(-${currentIndex * 100}%)` }"
       >
-        <div
-          v-for="(slide, index) in slides"
-          :key="index"
-          class="w-full flex-shrink-0"
-        >
-          <img
-            :src="slide.image"
-            :alt="slide.alt || ''"
-            class="w-full h-full object-cover"
-          />
+        <div v-for="(slide, index) in slides" :key="index" class="w-full flex-shrink-0">
+          <img :src="slide.image" :alt="slide.alt || ''" class="w-full h-full object-cover" />
         </div>
       </div>
 
       <!-- 导航按钮 -->
       <button
         v-if="showArrows && slides.length > 1"
-        @click="prev"
         class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+        @click="prev"
       >
         ‹
       </button>
       <button
         v-if="showArrows && slides.length > 1"
-        @click="next"
         class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+        @click="next"
       >
         ›
       </button>
@@ -41,11 +33,11 @@
         class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1"
       >
         <button
-          v-for="(slide, index) in slides"
+          v-for="(_, index) in slides"
           :key="index"
-          @click="goTo(index)"
           class="w-2 h-2 rounded-full transition-colors"
           :class="index === currentIndex ? 'bg-white' : 'bg-white/50'"
+          @click="goTo(index)"
         />
       </div>
     </div>
@@ -54,6 +46,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -72,7 +65,7 @@ interface CarouselProps {
   borderRadius?: string;
 }
 
-const carouselProps = computed(() => props.schema.props as CarouselProps);
+const carouselProps = computed(() => props.schema.props as unknown as CarouselProps);
 
 const slides = computed(() => carouselProps.value.slides || []);
 const autoplay = computed(() => carouselProps.value.autoplay !== false);
@@ -85,9 +78,9 @@ const borderRadius = computed(() => carouselProps.value.borderRadius || '8px');
 const currentIndex = ref(0);
 let autoplayTimer: ReturnType<typeof setInterval> | null = null;
 
-const carouselStyles = computed(() => ({
+const carouselStyles = computed<CSSProperties>(() => ({
   width: '100%',
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 
 const containerStyles = computed(() => ({

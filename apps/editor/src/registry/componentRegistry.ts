@@ -1,16 +1,40 @@
 import type { Component as VueComponent } from 'vue';
 import type { ComponentMeta } from '@page-builder/shared';
 import {
-  TextComponent, ButtonComponent, ImageComponent, ContainerComponent,
-  DividerComponent, SpacerComponent, CardComponent, BadgeComponent,
-  RichTextComponent, InputComponent, VideoComponent, AudioComponent, MapComponent,
-  CarouselComponent, CountdownComponent, ProgressComponent,
+  TextComponent,
+  ButtonComponent,
+  ImageComponent,
+  ContainerComponent,
+  DividerComponent,
+  SpacerComponent,
+  CardComponent,
+  BadgeComponent,
+  RichTextComponent,
+  InputComponent,
+  VideoComponent,
+  AudioComponent,
+  MapComponent,
+  CarouselComponent,
+  CountdownComponent,
+  ProgressComponent,
 } from '@page-builder/components';
 import {
-  TextMeta, ButtonMeta, ImageMeta, ContainerMeta,
-  DividerMeta, SpacerMeta, CardMeta, BadgeMeta, RichTextMeta, InputMeta,
-  VideoMeta, AudioMeta, MapMeta,
-  CarouselMeta, CountdownMeta, ProgressMeta,
+  TextMeta,
+  ButtonMeta,
+  ImageMeta,
+  ContainerMeta,
+  DividerMeta,
+  SpacerMeta,
+  CardMeta,
+  BadgeMeta,
+  RichTextMeta,
+  InputMeta,
+  VideoMeta,
+  AudioMeta,
+  MapMeta,
+  CarouselMeta,
+  CountdownMeta,
+  ProgressMeta,
 } from '@page-builder/components';
 
 export interface ComponentRegistration {

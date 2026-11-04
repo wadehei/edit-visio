@@ -4,13 +4,20 @@
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
     @click.self="closeModal"
   >
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col"
+    >
+      <div
+        class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+      >
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
           <Keyboard :size="20" />
           快捷键列表
         </h2>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <button
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          @click="closeModal"
+        >
           ×
         </button>
       </div>
@@ -182,16 +189,16 @@ const filteredCategories = computed(() => {
 
   const query = searchQuery.value.toLowerCase();
   return shortcutCategories
-    .map(category => ({
+    .map((category) => ({
       ...category,
       shortcuts: category.shortcuts.filter(
-        shortcut =>
+        (shortcut) =>
           shortcut.label.toLowerCase().includes(query) ||
           shortcut.description.toLowerCase().includes(query) ||
-          shortcut.keys.some(key => key.toLowerCase().includes(query))
+          shortcut.keys.some((key) => key.toLowerCase().includes(query)),
       ),
     }))
-    .filter(category => category.shortcuts.length > 0);
+    .filter((category) => category.shortcuts.length > 0);
 });
 
 const openModal = () => {

@@ -15,7 +15,8 @@ let toastContainer: HTMLDivElement | null = null;
 function getContainer(): HTMLDivElement {
   if (!toastContainer) {
     toastContainer = document.createElement('div');
-    toastContainer.className = 'fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none';
+    toastContainer.className =
+      'fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none';
     document.body.appendChild(toastContainer);
   }
   return toastContainer;
@@ -28,7 +29,11 @@ const typeStyles: Record<ToastType, string> = {
   info: 'bg-blue-500 text-white',
 };
 
-export function toast(message: string, type: ToastType = 'info', duration = DEFAULT_DURATION_MS): void {
+export function toast(
+  message: string,
+  type: ToastType = 'info',
+  duration = DEFAULT_DURATION_MS,
+): void {
   const container = getContainer();
 
   const el = document.createElement('div');
@@ -49,6 +54,11 @@ export function toast(message: string, type: ToastType = 'info', duration = DEFA
     el.classList.add('translate-x-full', 'opacity-0');
     setTimeout(() => {
       el.remove();
+      // 容器为空时销毁，避免 SPA 长时间运行内存泄漏
+      if (toastContainer && toastContainer.childElementCount === 0) {
+        toastContainer.remove();
+        toastContainer = null;
+      }
     }, EXIT_ANIMATION_MS);
   }, duration);
 }

@@ -28,12 +28,14 @@ export function useProjectManager() {
   let pageRequestVersion = 0;
 
   const currentProject = computed(() => {
-    return projects.value.find(p => p.id === currentProjectId.value) || null;
+    return projects.value.find((p) => p.id === currentProjectId.value) || null;
   });
 
   const currentPage = computed(() => {
     if (!currentProject.value) return null;
-    return currentProject.value.pages.find(p => p.id === currentProject.value!.currentPageId) || null;
+    return (
+      currentProject.value.pages.find((p) => p.id === currentProject.value!.currentPageId) || null
+    );
   });
 
   // ========== 本地存储（fallback） ==========
@@ -82,7 +84,7 @@ export function useProjectManager() {
     try {
       const { data } = await projectApi.getProjects();
       const apiProjects: Project[] = data.data.list.map((p) => ({
-        id: p.id,
+        id: String(p.projectId),
         name: p.name,
         description: p.description || '',
         pages: [],
@@ -94,7 +96,11 @@ export function useProjectManager() {
       saveProjectsToLocal();
       return apiProjects;
     } catch (error) {
-      logger.warn('ProjectManager', 'Failed to load projects from API, falling back to localStorage', error);
+      logger.warn(
+        'ProjectManager',
+        'Failed to load projects from API, falling back to localStorage',
+        error,
+      );
       toast('从服务器加载项目失败，使用本地数据', 'warning');
       projects.value = loadProjectsFromLocal();
       return projects.value;
@@ -138,11 +144,11 @@ export function useProjectManager() {
           p.id === project.id
             ? {
                 ...p,
-                id: data.data.id,
+                id: String(data.data.projectId),
                 createdAt: new Date(data.data.createdAt).getTime(),
                 updatedAt: new Date(data.data.updatedAt).getTime(),
               }
-            : p
+            : p,
         );
         saveProjectsToLocal();
       })
@@ -168,12 +174,10 @@ export function useProjectManager() {
       }
 
       // 异步调用 API 删除
-      projectApi
-        .deleteProject(id)
-        .catch((error) => {
-          logger.error('ProjectManager', 'Failed to delete project via API', error);
-          toast('删除项目同步失败', 'warning');
-        });
+      projectApi.deleteProject(id).catch((error) => {
+        logger.error('ProjectManager', 'Failed to delete project via API', error);
+        toast('删除项目同步失败', 'warning');
+      });
     }
   }
 
@@ -182,9 +186,7 @@ export function useProjectManager() {
     if (project) {
       // 不可变更新：创建新对象替换
       projects.value = projects.value.map((p) =>
-        p.id === id
-          ? { ...p, ...updates, updatedAt: Date.now() }
-          : p
+        p.id === id ? { ...p, ...updates, updatedAt: Date.now() } : p,
       );
       saveProjectsToLocal();
 
@@ -193,12 +195,10 @@ export function useProjectManager() {
       if (updates.name !== undefined) apiParams.name = updates.name;
       if (updates.description !== undefined) apiParams.description = updates.description;
 
-      projectApi
-        .updateProject(id, apiParams)
-        .catch((error) => {
-          logger.error('ProjectManager', 'Failed to update project via API', error);
-          toast('更新项目同步失败', 'warning');
-        });
+      projectApi.updateProject(id, apiParams).catch((error) => {
+        logger.error('ProjectManager', 'Failed to update project via API', error);
+        toast('更新项目同步失败', 'warning');
+      });
     }
   }
 
@@ -217,14 +217,16 @@ export function useProjectManager() {
         if (thisVersion !== pageRequestVersion) return;
 
         // 不可变更新：创建新的 pages 数组和 project 对象
-        const loadedPages: PageSchema[] = data.data.map((p) =>
-          p.schema ? toPageSchema(p.schema) : {
-            id: String(p.pageId),
-            name: p.title,
-            version: '1.0.0',
-            props: { title: p.title, backgroundColor: '#ffffff' },
-            children: [],
-          }
+        const loadedPages: PageSchema[] = data.data.list.map((p) =>
+          p.schema
+            ? toPageSchema(p.schema)
+            : {
+                id: String(p.pageId),
+                name: p.title,
+                version: '1.0.0',
+                props: { title: p.title, backgroundColor: '#ffffff' },
+                children: [],
+              },
         );
 
         projects.value = projects.value.map((proj) => {
@@ -238,9 +240,9 @@ export function useProjectManager() {
 
           // 选择首页或第一个页面
           if (!proj.currentPageId && loadedPages.length > 0) {
-            const apiHome = data.data.find((p) => p.isHome);
+            const apiHome = data.data.list.find((p) => p.isHome);
             const target = apiHome
-              ? loadedPages.find((pg) => pg.id === apiHome.id)
+              ? loadedPages.find((pg) => pg.id === String(apiHome.pageId))
               : loadedPages[0];
             updatedProj.currentPageId = target?.id || loadedPages[0].id;
           }
@@ -266,13 +268,13 @@ export function useProjectManager() {
               currentPageId: p.currentPageId || page.id,
               updatedAt: Date.now(),
             }
-          : p
+          : p,
       );
       saveProjectsToLocal();
 
       // 异步调用 API 创建页面
       pageApi
-        .createPage({ projectId, name: page.name })
+        .createPage(projectId, { title: page.name })
         .then(({ data }) => {
           // 用 API 返回的真实 ID 替换临时 ID
           projects.value = projects.value.map((proj) => {
@@ -280,13 +282,10 @@ export function useProjectManager() {
             return {
               ...proj,
               pages: proj.pages.map((pg) =>
-                pg.id === page.id
-                  ? { ...pg, id: data.data.id }
-                  : pg
+                pg.id === page.id ? { ...pg, id: String(data.data.pageId) } : pg,
               ),
-              currentPageId: proj.currentPageId === page.id
-                ? data.data.id
-                : proj.currentPageId,
+              currentPageId:
+                proj.currentPageId === page.id ? String(data.data.pageId) : proj.currentPageId,
             };
           });
           saveProjectsToLocal();
@@ -309,22 +308,23 @@ export function useProjectManager() {
             ? {
                 ...p,
                 pages: p.pages.filter((pg) => pg.id !== pageId),
-                currentPageId: p.currentPageId === pageId
-                  ? (p.pages.length > 1 ? p.pages.filter((pg) => pg.id !== pageId)[0]?.id || '' : '')
-                  : p.currentPageId,
+                currentPageId:
+                  p.currentPageId === pageId
+                    ? p.pages.length > 1
+                      ? p.pages.filter((pg) => pg.id !== pageId)[0]?.id || ''
+                      : ''
+                    : p.currentPageId,
                 updatedAt: Date.now(),
               }
-            : p
+            : p,
         );
         saveProjectsToLocal();
 
         // 异步调用 API 删除页面
-        pageApi
-          .deletePage(projectId, pageId)
-          .catch((error) => {
-            logger.error('ProjectManager', 'Failed to delete page via API', error);
-            toast('删除页面同步失败', 'warning');
-          });
+        pageApi.deletePage(projectId, pageId).catch((error) => {
+          logger.error('ProjectManager', 'Failed to delete page via API', error);
+          toast('删除页面同步失败', 'warning');
+        });
       }
     }
   }
@@ -335,12 +335,10 @@ export function useProjectManager() {
       p.id === projectId
         ? {
             ...p,
-            pages: p.pages.map((pg) =>
-              pg.id === page.id ? deepClone(page) : pg
-            ),
+            pages: p.pages.map((pg) => (pg.id === page.id ? deepClone(page) : pg)),
             updatedAt: Date.now(),
           }
-        : p
+        : p,
     );
     saveProjectsToLocal();
   }
@@ -348,9 +346,7 @@ export function useProjectManager() {
   function setCurrentPage(projectId: string, pageId: string) {
     // 不可变更新
     projects.value = projects.value.map((p) =>
-      p.id === projectId
-        ? { ...p, currentPageId: pageId, updatedAt: Date.now() }
-        : p
+      p.id === projectId ? { ...p, currentPageId: pageId, updatedAt: Date.now() } : p,
     );
     saveProjectsToLocal();
   }
@@ -380,11 +376,11 @@ export function useProjectManager() {
           p.id === newProject.id
             ? {
                 ...p,
-                id: data.data.id,
+                id: String(data.data.projectId),
                 createdAt: new Date(data.data.createdAt).getTime(),
                 updatedAt: new Date(data.data.updatedAt).getTime(),
               }
-            : p
+            : p,
         );
         saveProjectsToLocal();
       })

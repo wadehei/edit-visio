@@ -4,11 +4,13 @@
     <DeviceSwitcher />
 
     <!-- 缩放控制 -->
-    <div class="absolute top-4 left-4 z-30 bg-white rounded-lg shadow-lg p-2 flex gap-2 items-center">
+    <div
+      class="absolute top-4 left-4 z-30 bg-white rounded-lg shadow-lg p-2 flex gap-2 items-center"
+    >
       <button
-        @click="zoomOut"
         class="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded"
         title="缩小"
+        @click="zoomOut"
       >
         −
       </button>
@@ -16,33 +18,29 @@
         {{ Math.round(canvasScale * 100) }}%
       </span>
       <button
-        @click="zoomIn"
         class="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded"
         title="放大"
+        @click="zoomIn"
       >
         +
       </button>
-      <button
-        @click="resetZoom"
-        class="px-2 py-1 text-xs hover:bg-gray-100 rounded"
-        title="重置"
-      >
+      <button class="px-2 py-1 text-xs hover:bg-gray-100 rounded" title="重置" @click="resetZoom">
         重置
       </button>
       <div class="w-px h-6 bg-gray-300" />
       <button
-        @click="toggleGrid"
         class="px-2 py-1 text-xs hover:bg-gray-100 rounded"
         :class="{ 'bg-blue-100 text-blue-600': showGrid }"
         title="显示网格"
+        @click="toggleGrid"
       >
         网格
       </button>
       <button
-        @click="toggleSnapToGrid"
         class="px-2 py-1 text-xs hover:bg-gray-100 rounded"
         :class="{ 'bg-blue-100 text-blue-600': snapToGrid }"
         title="吸附网格"
+        @click="toggleSnapToGrid"
       >
         吸附
       </button>
@@ -80,8 +78,18 @@
               v-if="page.children.length === 0"
               class="flex flex-col items-center justify-center h-64 text-gray-400"
             >
-              <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <svg
+                class="w-16 h-16 mb-4 text-gray-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
               </svg>
               <p class="text-sm">从左侧拖拽组件到此处</p>
               <p class="text-xs mt-2 text-gray-300">或使用模板快速开始</p>
@@ -134,9 +142,21 @@ import ContextMenu from './ContextMenu.vue';
 import { getMeta } from '../registry/componentRegistry';
 
 const {
-  page, selectedId, setSelectedId, addComponent, moveComponent, setDragging,
-  canvasScale, canvasOffset, showGrid, snapToGrid, gridSize,
-  setCanvasScale, setCanvasOffset, toggleGrid, toggleSnapToGrid,
+  page,
+  selectedId,
+  setSelectedId,
+  addComponent,
+  moveComponent,
+  setDragging,
+  canvasScale,
+  canvasOffset,
+  showGrid,
+  snapToGrid,
+  gridSize,
+  setCanvasScale,
+  setCanvasOffset,
+  toggleGrid,
+  toggleSnapToGrid,
 } = useEditorStore();
 
 const { currentDeviceConfig } = useDevicePreview();
@@ -152,18 +172,16 @@ const handleContextMenu = (e: MouseEvent, componentId: string) => {
 const canvasStyles = computed(() => ({
   width: `${currentDeviceConfig.value.width}px`,
   minHeight: `${currentDeviceConfig.value.height}px`,
-  backgroundColor: page.value.props.backgroundColor,
-  backgroundImage: page.value.props.backgroundImage
-    ? `url(${page.value.props.backgroundImage})`
-    : undefined,
+  backgroundColor: page.props.backgroundColor,
+  backgroundImage: page.props.backgroundImage ? `url(${page.props.backgroundImage})` : undefined,
 }));
 
 const zoomIn = () => {
-  setCanvasScale(canvasScale.value + 0.1);
+  setCanvasScale(canvasScale + 0.1);
 };
 
 const zoomOut = () => {
-  setCanvasScale(canvasScale.value - 0.1);
+  setCanvasScale(canvasScale - 0.1);
 };
 
 const resetZoom = () => {
@@ -189,7 +207,7 @@ const handleDrop = (e: DragEvent) => {
 
   if (componentType) {
     const meta = getMeta(componentType);
-    const index = page.value.children.length;
+    const index = page.children.length;
     addComponent(
       componentType,
       'root',

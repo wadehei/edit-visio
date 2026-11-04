@@ -5,8 +5,8 @@
       type="text"
       :value="value"
       :placeholder="placeholder"
-      @input="$emit('change', ($event.target as HTMLInputElement).value)"
       class="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+      @input="$emit('change', ($event.target as HTMLInputElement).value)"
     />
   </div>
 </template>

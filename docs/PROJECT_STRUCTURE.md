@@ -100,6 +100,7 @@ edit-visio/
 ### 1. 类型定义 (packages/shared/src/types/schema.ts)
 
 定义了所有核心类型：
+
 - `PageSchema`: 页面结构
 - `ComponentSchema`: 组件结构
 - `ComponentMeta`: 组件元数据
@@ -108,6 +109,7 @@ edit-visio/
 ### 2. 状态管理 (apps/editor/src/stores/editorStore.ts)
 
 使用 Pinia 管理编辑器状态：
+
 - `page`: 当前页面数据（ref）
 - `selectedId`: 选中的组件 ID（ref）
 - `history`: 撤销/重做历史（ref）
@@ -116,6 +118,7 @@ edit-visio/
 ### 3. 组件系统 (packages/components/)
 
 每个组件包含两部分：
+
 - **组件实现**: Vue 组件（如 `Text.vue`）
 - **组件元数据**: `ComponentMeta` 对象，定义组件的属性、样式等
 
@@ -165,11 +168,11 @@ import { ref } from 'vue';
 
 export const useEditorStore = defineStore('editor', () => {
   const page = ref<PageSchema>(createDefaultPage());
-  
+
   const addComponent = (type: string) => {
     // ...
   };
-  
+
   return { page, addComponent };
 });
 ```

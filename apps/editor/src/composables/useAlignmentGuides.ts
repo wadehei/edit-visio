@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 export interface AlignmentGuide {
@@ -33,7 +33,7 @@ export function useAlignmentGuides() {
   const detectAlignment = (
     draggingComponent: ComponentSchema,
     allComponents: ComponentSchema[],
-    canvasRect: DOMRect
+    canvasRect: DOMRect,
   ) => {
     if (!showGuides.value) {
       guides.value = [];
@@ -50,14 +50,14 @@ export function useAlignmentGuides() {
     };
 
     // 收集所有组件的对齐位置
-    allComponents.forEach(comp => {
+    allComponents.forEach((comp) => {
       if (comp.id === draggingComponent.id) return;
 
       const bounds = getComponentBounds(comp, canvasRect);
       if (!bounds) return;
 
       // 垂直对齐线（左边、右边、中心）
-      [bounds.left, bounds.right, bounds.centerX].forEach(x => {
+      [bounds.left, bounds.right, bounds.centerX].forEach((x) => {
         if (!positions.vertical.has(x)) {
           positions.vertical.set(x, []);
         }
@@ -65,7 +65,7 @@ export function useAlignmentGuides() {
       });
 
       // 水平对齐线（顶部、底部、中心）
-      [bounds.top, bounds.bottom, bounds.centerY].forEach(y => {
+      [bounds.top, bounds.bottom, bounds.centerY].forEach((y) => {
         if (!positions.horizontal.has(y)) {
           positions.horizontal.set(y, []);
         }
@@ -80,7 +80,7 @@ export function useAlignmentGuides() {
     };
 
     // 检测垂直对齐
-    draggingPositions.vertical.forEach(x => {
+    draggingPositions.vertical.forEach((x) => {
       positions.vertical.forEach((components, posX) => {
         if (Math.abs(x - posX) < snapThreshold.value) {
           newGuides.push({
@@ -93,7 +93,7 @@ export function useAlignmentGuides() {
     });
 
     // 检测水平对齐
-    draggingPositions.horizontal.forEach(y => {
+    draggingPositions.horizontal.forEach((y) => {
       positions.horizontal.forEach((components, posY) => {
         if (Math.abs(y - posY) < snapThreshold.value) {
           newGuides.push({

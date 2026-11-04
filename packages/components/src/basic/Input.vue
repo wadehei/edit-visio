@@ -12,6 +12,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -28,7 +29,7 @@ interface InputProps {
   size?: 'small' | 'medium' | 'large';
 }
 
-const inputProps = computed(() => props.schema.props as InputProps);
+const inputProps = computed(() => props.schema.props as unknown as InputProps);
 
 const label = computed(() => inputProps.value.label);
 const placeholder = computed(() => inputProps.value.placeholder || '请输入');
@@ -42,11 +43,11 @@ const sizeMap: Record<string, { padding: string; fontSize: string }> = {
   large: { padding: '12px 16px', fontSize: '16px' },
 };
 
-const inputStyles = computed(() => ({
+const inputStyles = computed<CSSProperties>(() => ({
   display: 'flex',
   flexDirection: 'column',
   gap: '4px',
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 
 const labelStyles = computed(() => ({

@@ -3,10 +3,7 @@
     <div v-if="page.children.length === 0" class="text-gray-400 text-xs text-center py-4">
       暂无组件
     </div>
-    <div
-      v-for="component in page.children"
-      :key="component.id"
-    >
+    <div v-for="component in page.children" :key="component.id">
       <div
         class="flex items-center px-2 py-1 rounded cursor-pointer hover:bg-gray-100 group"
         :class="{
@@ -20,24 +17,24 @@
         </span>
         <!-- 可见性切换 -->
         <button
-          @click.stop="toggleVisibility(component.id, component.visible)"
           class="text-gray-400 hover:text-gray-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
           :title="component.visible === false ? '显示' : '隐藏'"
+          @click.stop="toggleVisibility(component.id, component.visible)"
         >
           {{ component.visible === false ? '👁️‍🗨️' : '👁️' }}
         </button>
         <!-- 锁定切换 -->
         <button
-          @click.stop="toggleLock(component.id, component.locked)"
           class="text-gray-400 hover:text-gray-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity ml-1"
           :title="component.locked ? '解锁' : '锁定'"
+          @click.stop="toggleLock(component.id, component.locked)"
         >
           {{ component.locked ? '🔓' : '🔒' }}
         </button>
         <button
-          @click.stop="deleteComponent(component.id)"
           class="text-red-500 hover:text-red-700 text-xs opacity-0 group-hover:opacity-100 transition-opacity ml-1"
           title="删除"
+          @click.stop="deleteComponent(component.id)"
         >
           ×
         </button>
@@ -57,10 +54,10 @@ import { getComponentLabel } from '@page-builder/shared';
 const { page, selectedId, setSelectedId, deleteComponent, updateComponent } = useEditorStore();
 
 const toggleVisibility = (id: string, currentVisible: boolean | undefined) => {
-  updateComponent(id, { visible: currentVisible === false ? true : false } as any);
+  updateComponent(id, { visible: currentVisible === false ? true : false });
 };
 
 const toggleLock = (id: string, currentLocked: boolean | undefined) => {
-  updateComponent(id, { locked: !currentLocked } as any);
+  updateComponent(id, { locked: !currentLocked });
 };
 </script>

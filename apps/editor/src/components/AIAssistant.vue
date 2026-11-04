@@ -1,9 +1,9 @@
 <template>
   <div class="relative">
     <button
-      @click="handleClick"
       class="p-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded transition-colors"
       title="AI 助手"
+      @click="handleClick"
     >
       <Sparkles :size="18" />
     </button>
@@ -24,8 +24,8 @@
         <div v-if="recommendations.length === 0" class="text-center py-8">
           <p class="text-sm text-gray-500 dark:text-gray-400">暂无建议</p>
           <button
-            @click="analyzePage"
             class="mt-2 px-4 py-2 bg-purple-500 text-white rounded text-sm hover:bg-purple-600"
+            @click="analyzePage"
           >
             分析页面
           </button>
@@ -47,7 +47,9 @@
                   {{ rec.description }}
                 </p>
               </div>
-              <span class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">
+              <span
+                class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded"
+              >
                 {{ rec.type === 'component' ? '组件' : rec.type === 'layout' ? '布局' : '文案' }}
               </span>
             </div>
@@ -82,13 +84,7 @@ import { ref } from 'vue';
 import { Sparkles } from 'lucide-vue-next';
 import { useAIAssistant } from '../composables/useAIAssistant';
 
-const {
-  showAIPanel,
-  recommendations,
-  layoutRecommendations,
-  analyzePage,
-  applyLayout,
-} = useAIAssistant();
+const { recommendations, layoutRecommendations, analyzePage, applyLayout } = useAIAssistant();
 
 const showPanel = ref(false);
 const showLayoutPanel = ref(false);

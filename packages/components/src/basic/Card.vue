@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -27,7 +28,7 @@ interface CardProps {
   shadow?: 'none' | 'small' | 'medium' | 'large';
 }
 
-const cardProps = computed(() => props.schema.props as CardProps);
+const cardProps = computed(() => props.schema.props as unknown as CardProps);
 
 const title = computed(() => cardProps.value.title);
 const footer = computed(() => cardProps.value.footer);
@@ -43,12 +44,12 @@ const shadowMap: Record<string, string> = {
   large: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
 };
 
-const cardStyles = computed(() => ({
+const cardStyles = computed<CSSProperties>(() => ({
   backgroundColor: backgroundColor.value,
   borderRadius: borderRadius.value,
   boxShadow: shadowMap[shadow.value],
   overflow: 'hidden',
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 
 const titleStyles = computed(() => ({

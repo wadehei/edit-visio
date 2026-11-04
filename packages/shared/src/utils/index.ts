@@ -68,7 +68,7 @@ export function deepClone<T>(obj: T): T {
 export function findComponentPath(
   components: import('../types').ComponentSchema[],
   targetId: string,
-  path: string[] = []
+  path: string[] = [],
 ): string[] | null {
   for (const component of components) {
     if (component.id === targetId) {
@@ -90,7 +90,7 @@ export function findComponentPath(
 export function updateComponent(
   components: import('../types').ComponentSchema[],
   id: string,
-  updater: (component: import('../types').ComponentSchema) => import('../types').ComponentSchema
+  updater: (component: import('../types').ComponentSchema) => import('../types').ComponentSchema,
 ): import('../types').ComponentSchema[] {
   return components.map((component) => {
     if (component.id === id) {
@@ -113,7 +113,7 @@ export function updateComponent(
  */
 export function removeComponent(
   components: import('../types').ComponentSchema[],
-  id: string
+  id: string,
 ): import('../types').ComponentSchema[] {
   return components
     .filter((component) => component.id !== id)
@@ -135,7 +135,7 @@ export function insertComponent(
   components: import('../types').ComponentSchema[],
   parentId: string,
   index: number,
-  newComponent: import('../types').ComponentSchema
+  newComponent: import('../types').ComponentSchema,
 ): import('../types').ComponentSchema[] {
   return components.map((component) => {
     if (component.id === parentId) {
@@ -192,7 +192,7 @@ export function getComponentLabel(component: import('../types').ComponentSchema)
  * 深拷贝组件并生成新 ID（用于复制组件）
  */
 export function duplicateComponentTree(
-  component: import('../types').ComponentSchema
+  component: import('../types').ComponentSchema,
 ): import('../types').ComponentSchema {
   return {
     ...component,
@@ -208,7 +208,7 @@ export function duplicateComponentTree(
  */
 export function findComponentInTree(
   components: import('../types').ComponentSchema[],
-  id: string
+  id: string,
 ): import('../types').ComponentSchema | null {
   for (const component of components) {
     if (component.id === id) {

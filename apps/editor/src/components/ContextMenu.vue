@@ -6,16 +6,19 @@
       :style="{ left: x + 'px', top: y + 'px' }"
     >
       <template v-for="item in menuItems" :key="item.action">
-        <div v-if="item.action === 'separator'" class="my-1 border-t border-gray-100 dark:border-gray-700" />
+        <div
+          v-if="item.action === 'separator'"
+          class="my-1 border-t border-gray-100 dark:border-gray-700"
+        />
         <button
           v-else
-          @click="executeAction(item.action)"
           class="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
           :class="{
             'text-red-600 dark:text-red-400': item.action === 'delete',
             'text-gray-400 cursor-not-allowed': item.disabled,
           }"
           :disabled="item.disabled"
+          @click="executeAction(item.action)"
         >
           <span class="w-4 text-center">{{ item.icon }}</span>
           <span class="flex-1">{{ item.label }}</span>
@@ -41,8 +44,14 @@ interface MenuItem {
 }
 
 const {
-  selectedId, setSelectedId, deleteComponent, moveComponent, page,
-  copyComponent, pasteComponent, clipboard, updateComponent,
+  setSelectedId,
+  deleteComponent,
+  moveComponent,
+  page,
+  copyComponent,
+  pasteComponent,
+  clipboard,
+  updateComponent,
 } = useEditorStore();
 
 const visible = ref(false);
@@ -54,14 +63,20 @@ const menuItems = computed<MenuItem[]>(() => {
   const id = targetComponentId.value;
   if (!id) return [];
 
-  const components = page.value.children;
-  const index = components.findIndex(c => c.id === id);
+  const components = page.children;
+  const index = components.findIndex((c) => c.id === id);
   const component = components[index];
   if (!component) return [];
 
   const items: MenuItem[] = [
     { action: 'copy', label: '复制', icon: '📋', shortcut: 'Ctrl+C' },
-    { action: 'paste', label: '粘贴', icon: '📄', shortcut: 'Ctrl+V', disabled: clipboard.value.length === 0 },
+    {
+      action: 'paste',
+      label: '粘贴',
+      icon: '📄',
+      shortcut: 'Ctrl+V',
+      disabled: clipboard.length === 0,
+    },
     { action: 'duplicate', label: '快速复制', icon: '⧉', shortcut: 'Ctrl+D' },
     { action: 'separator_1', label: '', icon: '' },
   ];
@@ -148,8 +163,8 @@ const executeAction = (action: string) => {
   const id = targetComponentId.value;
   if (!id) return;
 
-  const components = page.value.children;
-  const index = components.findIndex(c => c.id === id);
+  const components = page.children;
+  const index = components.findIndex((c) => c.id === id);
 
   switch (action) {
     case 'copy':
@@ -183,14 +198,14 @@ const executeAction = (action: string) => {
     case 'toggleLock': {
       const comp = components[index];
       if (comp) {
-        updateComponent(id, { locked: !comp.locked } as any);
+        updateComponent(id, { locked: !comp.locked });
       }
       break;
     }
     case 'toggleVisibility': {
       const comp = components[index];
       if (comp) {
-        updateComponent(id, { visible: comp.visible === false ? true : false } as any);
+        updateComponent(id, { visible: comp.visible === false ? true : false });
       }
       break;
     }
@@ -203,7 +218,7 @@ const executeAction = (action: string) => {
 };
 
 // 点击外部关闭
-const handleClickOutside = (e: MouseEvent) => {
+const handleClickOutside = () => {
   if (visible.value) {
     hide();
   }

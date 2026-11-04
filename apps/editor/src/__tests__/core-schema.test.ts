@@ -44,7 +44,7 @@ describe('validatePageSchema', () => {
     page.id = '';
     const result = validatePageSchema(page);
     expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.includes('ID'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('ID'))).toBe(true);
   });
 
   it('should reject page without name', () => {
@@ -52,7 +52,7 @@ describe('validatePageSchema', () => {
     page.name = '';
     const result = validatePageSchema(page);
     expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.includes('名称'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('名称'))).toBe(true);
   });
 
   it('should reject page without title', () => {
@@ -60,7 +60,7 @@ describe('validatePageSchema', () => {
     page.props.title = '';
     const result = validatePageSchema(page);
     expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.includes('标题'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('标题'))).toBe(true);
   });
 
   it('should reject page without background color', () => {
@@ -68,7 +68,7 @@ describe('validatePageSchema', () => {
     page.props.backgroundColor = '';
     const result = validatePageSchema(page);
     expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.includes('背景颜色'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('背景颜色'))).toBe(true);
   });
 
   it('should validate nested components', () => {
@@ -128,7 +128,13 @@ describe('serializePage / deserializePage', () => {
   });
 
   it('should throw on schema validation failure', () => {
-    const invalidJson = JSON.stringify({ id: '', name: '', version: '1.0.0', props: { title: '', backgroundColor: '' }, children: [] });
+    const invalidJson = JSON.stringify({
+      id: '',
+      name: '',
+      version: '1.0.0',
+      props: { title: '', backgroundColor: '' },
+      children: [],
+    });
     expect(() => deserializePage(invalidJson)).toThrow();
   });
 });

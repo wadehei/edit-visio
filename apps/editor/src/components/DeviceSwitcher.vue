@@ -3,12 +3,14 @@
     <button
       v-for="device in deviceList"
       :key="device.type"
-      @click="setDevice(device.type)"
       class="px-3 py-1.5 rounded text-sm transition-all"
-      :class="currentDevice === device.type
-        ? 'bg-blue-500 text-white'
-        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+      :class="
+        currentDevice === device.type
+          ? 'bg-blue-500 text-white'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      "
       :title="device.name"
+      @click="setDevice(device.type)"
     >
       <span class="mr-1">{{ device.icon }}</span>
       {{ device.name }}
@@ -16,9 +18,9 @@
 
     <button
       v-if="currentDevice === 'custom'"
-      @click="showCustomSizeDialog = true"
       class="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 hover:bg-gray-200"
       title="自定义尺寸"
+      @click="showCustomSizeDialog = true"
     >
       ⚙️
     </button>
@@ -35,30 +37,30 @@
           <div>
             <label class="block text-sm text-gray-700 mb-1">宽度 (px)</label>
             <input
-              type="number"
               v-model="tempWidth"
+              type="number"
               class="w-full px-3 py-2 border border-gray-300 rounded"
             />
           </div>
           <div>
             <label class="block text-sm text-gray-700 mb-1">高度 (px)</label>
             <input
-              type="number"
               v-model="tempHeight"
+              type="number"
               class="w-full px-3 py-2 border border-gray-300 rounded"
             />
           </div>
         </div>
         <div class="flex gap-2 mt-6">
           <button
-            @click="showCustomSizeDialog = false"
             class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+            @click="showCustomSizeDialog = false"
           >
             取消
           </button>
           <button
-            @click="applyCustomSize"
             class="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            @click="applyCustomSize"
           >
             应用
           </button>
@@ -71,7 +73,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useDevicePreview } from '../composables/useDevicePreview';
-import type { DeviceType } from '../composables/useDevicePreview';
 
 const { currentDevice, devices, setDevice, setCustomSize } = useDevicePreview();
 

@@ -1,5 +1,7 @@
 <template>
-  <div class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+  <div
+    class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col"
+  >
     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">组件库</h2>
 
@@ -14,8 +16,8 @@
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
         <button
           v-if="searchQuery"
-          @click="searchQuery = ''"
           class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          @click="searchQuery = ''"
         >
           ×
         </button>
@@ -26,11 +28,13 @@
         <button
           v-for="category in categories"
           :key="category.value"
-          @click="selectedCategory = category.value"
           class="px-3 py-1 text-xs rounded transition-colors"
-          :class="selectedCategory === category.value
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+          :class="
+            selectedCategory === category.value
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+          "
+          @click="selectedCategory = category.value"
         >
           {{ category.label }}
         </button>
@@ -40,7 +44,9 @@
     <div class="flex-1 overflow-y-auto p-4">
       <!-- 收藏的组件 -->
       <div v-if="favoriteComponents.length > 0 && !searchQuery" class="mb-6">
-        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-1">
+        <h3
+          class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-1"
+        >
           <Star :size="14" class="text-yellow-500" />
           收藏的组件
         </h3>
@@ -116,7 +122,12 @@ const { setDragging } = useEditorStore();
 
 const searchQuery = ref('');
 const selectedCategory = ref('all');
-const favoriteComponents = ref<string[]>(loadFavorites());
+// 收藏项以组件类型（type）持久化
+const favoriteTypes = ref<string[]>(loadFavorites());
+// 模板中需要渲染的是组件元数据，按类型映射为 ComponentMeta
+const favoriteComponents = computed(() =>
+  allComponents.filter((c) => favoriteTypes.value.includes(c.type)),
+);
 
 const categories = [
   { value: 'all', label: '全部' },
@@ -126,51 +137,60 @@ const categories = [
 ];
 
 const componentCategories = computed(() => {
-  const filtered = selectedCategory.value === 'all'
-    ? allComponents
-    : allComponents.filter(c => {
-        if (selectedCategory.value === 'basic') {
-          return ['text', 'button', 'image', 'container', 'divider', 'spacer', 'card', 'badge'].includes(c.type);
-        }
-        if (selectedCategory.value === 'media') {
-          return ['video', 'audio', 'map', 'image'].includes(c.type);
-        }
-        if (selectedCategory.value === 'form') {
-          return ['input', 'button'].includes(c.type);
-        }
-        return true;
-      });
+  const filtered =
+    selectedCategory.value === 'all'
+      ? allComponents
+      : allComponents.filter((c) => {
+          if (selectedCategory.value === 'basic') {
+            return [
+              'text',
+              'button',
+              'image',
+              'container',
+              'divider',
+              'spacer',
+              'card',
+              'badge',
+            ].includes(c.type);
+          }
+          if (selectedCategory.value === 'media') {
+            return ['video', 'audio', 'map', 'image'].includes(c.type);
+          }
+          if (selectedCategory.value === 'form') {
+            return ['input', 'button'].includes(c.type);
+          }
+          return true;
+        });
 
   return [
     {
       name: '基础组件',
-      components: filtered.filter(c => ['text', 'button', 'image', 'container'].includes(c.type)),
+      components: filtered.filter((c) => ['text', 'button', 'image', 'container'].includes(c.type)),
     },
     {
       name: '布局组件',
-      components: filtered.filter(c => ['divider', 'spacer', 'card'].includes(c.type)),
+      components: filtered.filter((c) => ['divider', 'spacer', 'card'].includes(c.type)),
     },
     {
       name: '表单组件',
-      components: filtered.filter(c => ['input', 'badge'].includes(c.type)),
+      components: filtered.filter((c) => ['input', 'badge'].includes(c.type)),
     },
     {
       name: '内容组件',
-      components: filtered.filter(c => ['richText'].includes(c.type)),
+      components: filtered.filter((c) => ['richText'].includes(c.type)),
     },
     {
       name: '媒体组件',
-      components: filtered.filter(c => ['video', 'audio', 'map'].includes(c.type)),
+      components: filtered.filter((c) => ['video', 'audio', 'map'].includes(c.type)),
     },
-  ].filter(cat => cat.components.length > 0);
+  ].filter((cat) => cat.components.length > 0);
 });
 
 const filteredComponents = computed(() => {
   if (!searchQuery.value) return [];
   const query = searchQuery.value.toLowerCase();
-  return allComponents.filter(c =>
-    c.label.toLowerCase().includes(query) ||
-    c.type.toLowerCase().includes(query)
+  return allComponents.filter(
+    (c) => c.label.toLowerCase().includes(query) || c.type.toLowerCase().includes(query),
   );
 });
 
@@ -187,15 +207,15 @@ const handleDragEnd = () => {
 };
 
 const isFavorite = (type: string) => {
-  return favoriteComponents.value.includes(type);
+  return favoriteTypes.value.includes(type);
 };
 
 const toggleFavorite = (type: string) => {
-  const index = favoriteComponents.value.indexOf(type);
+  const index = favoriteTypes.value.indexOf(type);
   if (index > -1) {
-    favoriteComponents.value.splice(index, 1);
+    favoriteTypes.value.splice(index, 1);
   } else {
-    favoriteComponents.value.push(type);
+    favoriteTypes.value.push(type);
   }
   saveFavorites();
 };
@@ -211,7 +231,7 @@ function loadFavorites(): string[] {
 
 function saveFavorites() {
   try {
-    localStorage.setItem('favorite-components', JSON.stringify(favoriteComponents.value));
+    localStorage.setItem('favorite-components', JSON.stringify(favoriteTypes.value));
   } catch (error) {
     logger.error('ComponentPanel', 'Failed to save favorites', error);
   }

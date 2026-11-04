@@ -9,8 +9,8 @@
         <button
           v-for="category in animationCategories"
           :key="category.name"
-          @click="expandedCategory = expandedCategory === category.name ? '' : category.name"
           class="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors text-left"
+          @click="expandedCategory = expandedCategory === category.name ? '' : category.name"
         >
           {{ category.name }}
         </button>
@@ -21,17 +21,19 @@
         <button
           v-for="anim in getCategoryAnimations(expandedCategory)"
           :key="anim"
-          @click="selectAnimation(anim)"
           class="w-full px-3 py-2 text-xs text-left rounded transition-colors"
-          :class="currentAnimation.type === anim
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'"
+          :class="
+            currentAnimation.type === anim
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+          "
+          @click="selectAnimation(anim)"
         >
           {{ getAnimationLabel(anim) }}
           <span
             v-if="currentAnimation.type === anim"
-            @click.stop="previewAnimation(anim)"
             class="ml-2 text-xs"
+            @click.stop="previewAnimation(anim)"
           >
             ▶
           </span>
@@ -48,11 +50,11 @@
         <input
           type="range"
           :value="currentAnimation.duration"
-          @input="setDuration(Number(($event.target as HTMLInputElement).value))"
           min="100"
           max="2000"
           step="100"
           class="w-full"
+          @input="setDuration(Number(($event.target as HTMLInputElement).value))"
         />
       </div>
 
@@ -63,11 +65,11 @@
         <input
           type="range"
           :value="currentAnimation.delay"
-          @input="setDelay(Number(($event.target as HTMLInputElement).value))"
           min="0"
           max="2000"
           step="100"
           class="w-full"
+          @input="setDelay(Number(($event.target as HTMLInputElement).value))"
         />
       </div>
 
@@ -75,8 +77,8 @@
         <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">重复</label>
         <select
           :value="currentAnimation.iteration"
-          @change="setIteration(($event.target as HTMLSelectElement).value as 'once' | 'infinite')"
           class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded"
+          @change="setIteration(($event.target as HTMLSelectElement).value as 'once' | 'infinite')"
         >
           <option value="once">一次</option>
           <option value="infinite">无限循环</option>
@@ -88,7 +90,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useAnimation } from '../composables/useAnimation';
+import { useAnimation, animationPresets } from '../composables/useAnimation';
 import type { AnimationType } from '../composables/useAnimation';
 
 interface Props {
@@ -97,20 +99,16 @@ interface Props {
 
 defineProps<Props>();
 
-const {
-  currentAnimation,
-  animationCategories,
-  setAnimation,
-  setDuration,
-  setDelay,
-  setIteration,
-} = useAnimation();
+const { currentAnimation, animationCategories, setAnimation, setDuration, setDelay, setIteration } =
+  useAnimation();
 
 const expandedCategory = ref('');
 
-const getCategoryAnimations = (categoryName: string) => {
-  const category = animationCategories.find(c => c.name === categoryName);
-  return category?.animations || [];
+const getCategoryAnimations = (categoryName: string): AnimationType[] => {
+  const category = animationCategories.find((c) => c.name === categoryName);
+  return (category?.animations ?? []).filter(
+    (anim): anim is AnimationType => anim in animationPresets,
+  );
 };
 
 const getAnimationLabel = (type: string) => {

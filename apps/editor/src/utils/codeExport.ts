@@ -1,14 +1,4 @@
-import type {
-  PageSchema,
-  ComponentSchema,
-  TextProps,
-  ButtonProps,
-  ImageProps,
-  CardProps,
-  BadgeProps,
-  RichTextProps,
-  InputProps,
-} from '@page-builder/shared';
+import type { PageSchema, ComponentSchema } from '@page-builder/shared';
 import { escapeHTML, getComponentProps } from '@page-builder/shared';
 
 // ========== 公共工具 ==========
@@ -28,7 +18,7 @@ function renderChildrenHTML(components: ComponentSchema[] | undefined): string {
 
 /** 递归渲染子组件为 Vue 模板 */
 function renderChildrenVue(components: ComponentSchema[] | undefined, indent: number): string {
-  return components?.map(c => componentToVueTemplate(c, indent)).join('\n') || '';
+  return components?.map((c) => componentToVueTemplate(c, indent)).join('\n') || '';
 }
 
 // ========== HTML 导出 ==========
@@ -39,17 +29,17 @@ function componentToHTML(component: ComponentSchema): string {
 
   switch (component.type) {
     case 'text': {
-      const props = getComponentProps<TextProps>(component, 'text', { content: '' });
+      const props = getComponentProps(component, 'text', { content: '' });
       return `<div${styleAttr}>${escapeHTML(props.content)}</div>`;
     }
 
     case 'button': {
-      const props = getComponentProps<ButtonProps>(component, 'button', { text: '按钮' });
+      const props = getComponentProps(component, 'button', { text: '按钮' });
       return `<button${styleAttr}>${escapeHTML(props.text)}</button>`;
     }
 
     case 'image': {
-      const props = getComponentProps<ImageProps>(component, 'image', { src: '', alt: '' });
+      const props = getComponentProps(component, 'image', { src: '', alt: '' });
       return `<img src="${escapeHTML(props.src)}" alt="${escapeHTML(props.alt)}"${styleAttr} />`;
     }
 
@@ -63,7 +53,7 @@ function componentToHTML(component: ComponentSchema): string {
       return `<div${styleAttr}></div>`;
 
     case 'card': {
-      const props = getComponentProps<CardProps>(component, 'card', {});
+      const props = getComponentProps(component, 'card', {});
       const children = renderChildrenHTML(component.children);
       let html = `<div${styleAttr}>`;
       if (props.title) {
@@ -78,22 +68,22 @@ function componentToHTML(component: ComponentSchema): string {
     }
 
     case 'badge': {
-      const props = getComponentProps<BadgeProps>(component, 'badge', { text: '' });
+      const props = getComponentProps(component, 'badge', { text: '' });
       return `<span${styleAttr}>${escapeHTML(props.text)}</span>`;
     }
 
     case 'richText': {
-      const props = getComponentProps<RichTextProps>(component, 'richText', { content: '' });
+      const props = getComponentProps(component, 'richText', { content: '' });
       return `<div${styleAttr}>${escapeHTML(props.content)}</div>`;
     }
 
     case 'input': {
-      const props = getComponentProps<InputProps>(component, 'input', { inputType: 'text', placeholder: '' });
+      const props = getComponentProps(component, 'input', { inputType: 'text', placeholder: '' });
       let html = `<div${styleAttr}>`;
       if (props.label) {
         html += `<label style="display: block; margin-bottom: 4px; font-size: 14px;">${escapeHTML(props.label)}</label>`;
       }
-      html += `<input type="${escapeHTML(props.inputType)}" placeholder="${escapeHTML(props.placeholder)}" />`;
+      html += `<input type="${escapeHTML(props.inputType ?? 'text')}" placeholder="${escapeHTML(props.placeholder ?? '')}" />`;
       html += '</div>';
       return html;
     }
@@ -155,17 +145,17 @@ function componentToVueTemplate(component: ComponentSchema, indent: number = 4):
 
   switch (component.type) {
     case 'text': {
-      const props = getComponentProps<TextProps>(component, 'text', { content: '' });
+      const props = getComponentProps(component, 'text', { content: '' });
       return `${pad}<div${styleAttr}>${escapeHTML(props.content)}</div>`;
     }
 
     case 'button': {
-      const props = getComponentProps<ButtonProps>(component, 'button', { text: '按钮' });
+      const props = getComponentProps(component, 'button', { text: '按钮' });
       return `${pad}<button${styleAttr}>${escapeHTML(props.text)}</button>`;
     }
 
     case 'image': {
-      const props = getComponentProps<ImageProps>(component, 'image', { src: '', alt: '' });
+      const props = getComponentProps(component, 'image', { src: '', alt: '' });
       return `${pad}<img src="${escapeHTML(props.src)}" alt="${escapeHTML(props.alt)}"${styleAttr} />`;
     }
 
@@ -181,7 +171,7 @@ function componentToVueTemplate(component: ComponentSchema, indent: number = 4):
       return `${pad}<div${styleAttr}></div>`;
 
     case 'card': {
-      const props = getComponentProps<CardProps>(component, 'card', {});
+      const props = getComponentProps(component, 'card', {});
       const children = renderChildrenVue(component.children, indent + 2);
       let html = `${pad}<div${styleAttr}>\n`;
       if (props.title) {
@@ -196,23 +186,23 @@ function componentToVueTemplate(component: ComponentSchema, indent: number = 4):
     }
 
     case 'badge': {
-      const props = getComponentProps<BadgeProps>(component, 'badge', { text: '' });
+      const props = getComponentProps(component, 'badge', { text: '' });
       return `${pad}<span${styleAttr}>${escapeHTML(props.text)}</span>`;
     }
 
     case 'richText': {
-      const props = getComponentProps<RichTextProps>(component, 'richText', { content: '' });
+      const props = getComponentProps(component, 'richText', { content: '' });
       // NOTE: v-html 存在 XSS 风险，确保 content 来源可信
       return `${pad}<div${styleAttr} v-html="'${escapeHTML(props.content).replace(/'/g, "\\'")}'"></div>`;
     }
 
     case 'input': {
-      const props = getComponentProps<InputProps>(component, 'input', { inputType: 'text', placeholder: '' });
+      const props = getComponentProps(component, 'input', { inputType: 'text', placeholder: '' });
       let html = `${pad}<div${styleAttr}>\n`;
       if (props.label) {
         html += `${pad}  <label style="display: block; margin-bottom: 4px; font-size: 14px;">${escapeHTML(props.label)}</label>\n`;
       }
-      html += `${pad}  <input type="${escapeHTML(props.inputType)}" placeholder="${escapeHTML(props.placeholder)}" />\n`;
+      html += `${pad}  <input type="${escapeHTML(props.inputType ?? 'text')}" placeholder="${escapeHTML(props.placeholder ?? '')}" />\n`;
       html += `${pad}</div>`;
       return html;
     }
@@ -224,7 +214,7 @@ function componentToVueTemplate(component: ComponentSchema, indent: number = 4):
 
 /** 将完整页面导出为 Vue SFC 文件 */
 export function exportToVue(page: PageSchema): string {
-  const children = page.children.map(c => componentToVueTemplate(c)).join('\n');
+  const children = page.children.map((c) => componentToVueTemplate(c)).join('\n');
 
   return `<template>
   <div class="page-container">

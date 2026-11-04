@@ -12,20 +12,19 @@
     }
   },
   "scripts": {
-    "lint": "eslint src --ext .ts,.vue",
-    "lint:fix": "eslint src --ext .ts,.vue --fix",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
     "@page-builder/shared": "workspace:*",
+    "dompurify": "^3.4.17",
     "vue": "^3.4.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue": "^6.0.10",
     "typescript": "^5.3.3",
-    "vite": "^5.0.10"
+    "vite": "^8.3.5"
   },
   "peerDependencies": {
     "vue": "^3.4.0"

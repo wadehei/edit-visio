@@ -1,13 +1,12 @@
 <template>
-  <button
-    :style="buttonStyles"
-  >
+  <button :style="buttonStyles">
     {{ text || '按钮' }}
   </button>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -24,7 +23,7 @@ interface ButtonProps {
   link?: string;
 }
 
-const buttonProps = computed(() => props.schema.props as ButtonProps);
+const buttonProps = computed(() => props.schema.props as unknown as ButtonProps);
 
 const text = computed(() => buttonProps.value.text);
 const type = computed(() => buttonProps.value.type || 'default');
@@ -62,9 +61,9 @@ const typeStyles: Record<string, Record<string, string>> = {
   },
 };
 
-const buttonStyles = computed(() => ({
+const buttonStyles = computed<CSSProperties>(() => ({
   ...baseStyles,
   ...typeStyles[type.value],
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 </script>

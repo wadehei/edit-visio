@@ -1,3 +1,5 @@
+// 根 package.json 声明了 "type": "module"，.js 会被当作 ESM 解析，
+// 而 commitlint 18 的 cosmiconfig 以 require() 加载配置，因此这里必须使用 .cjs
 module.exports = {
   extends: ['@commitlint/config-conventional'],
   rules: {

@@ -1,15 +1,16 @@
 <template>
   <!-- 组件属性编辑 -->
-  <div
-    v-if="selectedComponent"
-    class="w-80 bg-white border-l border-gray-200 flex flex-col"
-  >
+  <div v-if="selectedComponent" class="w-80 bg-white border-l border-gray-200 flex flex-col">
     <div class="p-3 border-b border-gray-200 flex items-center justify-between">
       <div>
         <h2 class="text-sm font-semibold text-gray-800">属性配置</h2>
-        <p class="text-[11px] text-gray-400 mt-0.5">{{ componentMeta?.label || selectedComponent.type }}</p>
+        <p class="text-[11px] text-gray-400 mt-0.5">
+          {{ componentMeta?.label || selectedComponent.type }}
+        </p>
       </div>
-      <span class="text-[10px] text-gray-300 font-mono">{{ selectedComponent.id.slice(0, 8) }}</span>
+      <span class="text-[10px] text-gray-300 font-mono">{{
+        selectedComponent.id.slice(0, 8)
+      }}</span>
     </div>
 
     <div class="flex-1 overflow-y-auto">
@@ -51,7 +52,7 @@ import PageConfigPanel from './property-panel/PageConfigPanel.vue';
 const { page, selectedId, updateComponent, setPage, getComponentById } = useEditorStore();
 
 const selectedComponent = computed(() =>
-  selectedId.value ? getComponentById(selectedId.value) ?? null : null
+  selectedId ? (getComponentById(selectedId) ?? null) : null,
 );
 
 const componentMeta = computed<ComponentMeta | null>(() => {
@@ -59,7 +60,16 @@ const componentMeta = computed<ComponentMeta | null>(() => {
   return getMeta(selectedComponent.value.type) || null;
 });
 
-const styles = computed(() => selectedComponent.value?.styles || {});
+/** 将组件的 Partial<CSSStyleDeclaration> 样式转换为 StylePanel 所需的 Record 类型 */
+const toStyleRecord = (
+  source: Partial<CSSStyleDeclaration> | undefined,
+): Record<string, string | undefined> => {
+  const result: Record<string, string | undefined> = {};
+  Object.assign(result, source);
+  return result;
+};
+
+const styles = computed(() => toStyleRecord(selectedComponent.value?.styles));
 
 const handlePropChange = (propName: string, value: unknown) => {
   if (!selectedComponent.value) return;
@@ -82,13 +92,13 @@ const handleStyleChange = (styleName: string, value: string) => {
 };
 
 const handlePageNameChange = (_field: 'name', value: string) => {
-  setPage({ ...page.value, name: value });
+  setPage({ ...page, name: value });
 };
 
 const handlePagePropChange = (field: string, value: string | undefined) => {
   setPage({
-    ...page.value,
-    props: { ...page.value.props, [field]: value },
+    ...page,
+    props: { ...page.props, [field]: value },
   });
 };
 </script>

@@ -2,10 +2,24 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { PageSchema, ComponentSchema } from '@page-builder/shared';
 import { createDefaultPage } from '@page-builder/core';
-import { generateId, deepClone, updateComponent, removeComponent, insertComponent, findComponentInTree, duplicateComponentTree } from '@page-builder/shared';
+import {
+  generateId,
+  deepClone,
+  updateComponent,
+  removeComponent,
+  insertComponent,
+  findComponentInTree,
+  duplicateComponentTree,
+} from '@page-builder/shared';
 
 /** 最大历史步数（超过后丢弃最早的记录） */
 const MAX_HISTORY_SIZE = 20;
+
+/** 历史快照条目：组件树快照 + 记录时刻（供历史面板展示时间） */
+export interface HistoryEntry {
+  schema: PageSchema;
+  timestamp: number;
+}
 
 export const useEditorStore = defineStore('editor', () => {
   // State
@@ -21,8 +35,8 @@ export const useEditorStore = defineStore('editor', () => {
   const gridSize = ref(8);
   const clipboard = ref<ComponentSchema[]>([]);
   const history = ref<{
-    past: PageSchema[];
-    future: PageSchema[];
+    past: HistoryEntry[];
+    future: HistoryEntry[];
   }>({
     past: [],
     future: [],
@@ -72,14 +86,13 @@ export const useEditorStore = defineStore('editor', () => {
   const toggleSelection = (id: string) => {
     const index = selectedIds.value.indexOf(id);
     if (index > -1) {
-      selectedIds.value = selectedIds.value.filter(i => i !== id);
+      selectedIds.value = selectedIds.value.filter((i) => i !== id);
     } else {
       selectedIds.value = [...selectedIds.value, id];
     }
     // selectedId 始终指向最后选中的
-    selectedId.value = selectedIds.value.length > 0
-      ? selectedIds.value[selectedIds.value.length - 1]
-      : null;
+    selectedId.value =
+      selectedIds.value.length > 0 ? selectedIds.value[selectedIds.value.length - 1] : null;
   };
 
   /** 是否处于多选状态 */
@@ -87,9 +100,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** 获取所有选中的组件 */
   const selectedComponents = computed(() =>
-    selectedIds.value
-      .map(id => getComponentById(id))
-      .filter((c): c is ComponentSchema => !!c)
+    selectedIds.value.map((id) => getComponentById(id)).filter((c): c is ComponentSchema => !!c),
   );
 
   const setHoveredId = (id: string | null) => {
@@ -120,7 +131,7 @@ export const useEditorStore = defineStore('editor', () => {
     // 保留最近 MAX_HISTORY_SIZE - 1 条，加上新保存的一条共 MAX_HISTORY_SIZE 条
     const past = history.value.past.slice(-(MAX_HISTORY_SIZE - 1));
     history.value = {
-      past: [...past, deepClone(page.value)],
+      past: [...past, { schema: deepClone(page.value), timestamp: Date.now() }],
       future: [],
     };
     saveVersion.value++;
@@ -131,7 +142,7 @@ export const useEditorStore = defineStore('editor', () => {
     parentId: string,
     index: number,
     defaultProps: Record<string, unknown> = {},
-    defaultStyles: Partial<CSSStyleDeclaration> = {}
+    defaultStyles: Partial<CSSStyleDeclaration> = {},
   ) => {
     saveToHistory(); // 先保存当前状态到历史（修改前）
 
@@ -143,27 +154,29 @@ export const useEditorStore = defineStore('editor', () => {
       children: [],
     };
 
-    const newPage = deepClone(page.value);
+    // 结构共享插入：root 层复制数组，嵌套层由 insertComponent 重建容器对象（叶子复用引用）
+    let newChildren: ComponentSchema[];
     if (parentId === 'root') {
-      newPage.children.splice(index, 0, newComponent);
+      newChildren = [...page.value.children];
+      newChildren.splice(index, 0, newComponent);
     } else {
-      newPage.children = insertComponent(newPage.children, parentId, index, newComponent);
+      newChildren = insertComponent(page.value.children, parentId, index, newComponent);
     }
 
-    page.value = newPage;
+    page.value = { ...page.value, children: newChildren };
     selectedId.value = newComponent.id;
   };
 
   const updateComponentById = (id: string, updates: Partial<ComponentSchema>) => {
     saveToHistory(); // 先保存当前状态到历史（修改前）
 
-    const newPage = deepClone(page.value);
-    newPage.children = updateComponent(newPage.children, id, (component) => ({
+    // updateComponent 返回新的树（结构共享：重建容器对象，叶子节点复用引用），无需全量 deepClone
+    const newChildren = updateComponent(page.value.children, id, (component) => ({
       ...component,
       ...updates,
     }));
 
-    page.value = newPage;
+    page.value = { ...page.value, children: newChildren };
   };
 
   const deleteComponent = (id: string) => {
@@ -171,13 +184,13 @@ export const useEditorStore = defineStore('editor', () => {
 
     const idsToDelete = selectedIds.value.length > 1 ? selectedIds.value : [id];
 
-    // 不可变地删除所有目标组件
-    const newPage = deepClone(page.value);
+    // 结构共享删除：removeComponent 逐层重建容器对象
+    let newChildren = page.value.children;
     for (const deleteId of idsToDelete) {
-      newPage.children = removeComponent(newPage.children, deleteId);
+      newChildren = removeComponent(newChildren, deleteId);
     }
 
-    page.value = newPage;
+    page.value = { ...page.value, children: newChildren };
     if (idsToDelete.includes(selectedId.value!)) {
       selectedId.value = null;
       selectedIds.value = [];
@@ -187,20 +200,20 @@ export const useEditorStore = defineStore('editor', () => {
   const moveComponent = (id: string, targetParentId: string, targetIndex: number) => {
     saveToHistory(); // 先保存当前状态到历史（修改前）
 
-    const newPage = deepClone(page.value);
-
-    const component = findComponentInTree(newPage.children, id);
+    const component = findComponentInTree(page.value.children, id);
     if (!component) return;
 
-    newPage.children = removeComponent(newPage.children, id);
+    // 结构共享移动：先删后插，逐层重建容器对象
+    let newChildren = removeComponent(page.value.children, id);
 
     if (targetParentId === 'root') {
-      newPage.children.splice(targetIndex, 0, component);
+      newChildren = [...newChildren];
+      newChildren.splice(targetIndex, 0, component);
     } else {
-      newPage.children = insertComponent(newPage.children, targetParentId, targetIndex, component);
+      newChildren = insertComponent(newChildren, targetParentId, targetIndex, component);
     }
 
-    page.value = newPage;
+    page.value = { ...page.value, children: newChildren };
   };
 
   const undo = () => {
@@ -212,12 +225,14 @@ export const useEditorStore = defineStore('editor', () => {
 
     history.value = {
       past: newPast,
-      future: [deepClone(page.value), ...history.value.future],
+      future: [{ schema: deepClone(page.value), timestamp: Date.now() }, ...history.value.future],
     };
-    page.value = previous;
+    page.value = previous.schema;
     saveVersion.value++;
     // 延迟重置标记，让 autoSave 的 watch 能检测到
-    queueMicrotask(() => { isRestoring.value = false; });
+    queueMicrotask(() => {
+      isRestoring.value = false;
+    });
   };
 
   const redo = () => {
@@ -228,12 +243,14 @@ export const useEditorStore = defineStore('editor', () => {
     const newFuture = history.value.future.slice(1);
 
     history.value = {
-      past: [...history.value.past, deepClone(page.value)],
+      past: [...history.value.past, { schema: deepClone(page.value), timestamp: Date.now() }],
       future: newFuture,
     };
-    page.value = next;
+    page.value = next.schema;
     saveVersion.value++;
-    queueMicrotask(() => { isRestoring.value = false; });
+    queueMicrotask(() => {
+      isRestoring.value = false;
+    });
   };
 
   // 剪贴板操作
@@ -241,9 +258,9 @@ export const useEditorStore = defineStore('editor', () => {
     // 多选时复制所有选中的组件，否则复制当前选中的
     if (selectedIds.value.length > 1) {
       clipboard.value = selectedIds.value
-        .map(id => getComponentById(id))
+        .map((id) => getComponentById(id))
         .filter((c): c is ComponentSchema => !!c)
-        .map(c => deepClone(c));
+        .map((c) => deepClone(c));
     } else if (selectedId.value) {
       const component = getComponentById(selectedId.value);
       if (component) {
@@ -258,21 +275,22 @@ export const useEditorStore = defineStore('editor', () => {
     saveToHistory();
 
     const insertIndex = selectedId.value
-      ? page.value.children.findIndex(c => c.id === selectedId.value) + 1
+      ? page.value.children.findIndex((c) => c.id === selectedId.value) + 1
       : page.value.children.length;
 
-    // 只克隆一次，批量插入所有组件（避免循环内重复克隆和触发响应式）
-    const newPage = deepClone(page.value);
+    // 结构共享插入：逐条复制组件树后插入，逐层重建容器对象
+    let newChildren = page.value.children;
     let lastInsertedId: string | null = null;
 
     for (let i = 0; i < clipboard.value.length; i++) {
       const copied = clipboard.value[i];
       const newComponent = duplicateComponentTree(copied);
-      newPage.children.splice(insertIndex + i, 0, newComponent);
+      newChildren = [...newChildren];
+      newChildren.splice(insertIndex + i, 0, newComponent);
       lastInsertedId = newComponent.id;
     }
 
-    page.value = newPage;
+    page.value = { ...page.value, children: newChildren };
     if (lastInsertedId) {
       selectedId.value = lastInsertedId;
     }
@@ -282,21 +300,18 @@ export const useEditorStore = defineStore('editor', () => {
    * 直接插入一个已有的组件树（保留子组件结构），用于复制/粘贴/拖拽场景。
    * 与 addComponent 不同：addComponent 会新建组件并忽略 children。
    */
-  const insertComponentTree = (
-    componentTree: ComponentSchema,
-    parentId: string,
-    index: number
-  ) => {
+  const insertComponentTree = (componentTree: ComponentSchema, parentId: string, index: number) => {
     saveToHistory();
 
-    const newPage = deepClone(page.value);
+    let newChildren: ComponentSchema[];
     if (parentId === 'root') {
-      newPage.children.splice(index, 0, componentTree);
+      newChildren = [...page.value.children];
+      newChildren.splice(index, 0, componentTree);
     } else {
-      newPage.children = insertComponent(newPage.children, parentId, index, componentTree);
+      newChildren = insertComponent(page.value.children, parentId, index, componentTree);
     }
 
-    page.value = newPage;
+    page.value = { ...page.value, children: newChildren };
     selectedId.value = componentTree.id;
   };
 

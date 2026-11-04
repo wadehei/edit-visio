@@ -1,9 +1,9 @@
 <template>
   <div class="relative">
     <button
-      @click="showDropdown = !showDropdown"
       class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
       :title="isDark ? '切换到亮色模式' : '切换到暗色模式'"
+      @click="showDropdown = !showDropdown"
     >
       <Moon v-if="!isDark" :size="18" />
       <Sun v-else :size="18" />
@@ -19,9 +19,12 @@
       <button
         v-for="mode in themeModes"
         :key="mode.value"
-        @click="selectMode(mode.value)"
         class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-        :class="{ 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400': themeConfig.mode === mode.value }"
+        :class="{
+          'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400':
+            themeConfig.mode === mode.value,
+        }"
+        @click="selectMode(mode.value)"
       >
         <component :is="mode.icon" :size="16" />
         {{ mode.label }}
@@ -33,10 +36,12 @@
           <button
             v-for="color in presetColors"
             :key="color"
-            @click="selectColor(color)"
             class="w-6 h-6 rounded-full border-2 transition-all"
             :style="{ backgroundColor: color }"
-            :class="{ 'border-gray-800 dark:border-white scale-110': themeConfig.primaryColor === color }"
+            :class="{
+              'border-gray-800 dark:border-white scale-110': themeConfig.primaryColor === color,
+            }"
+            @click="selectColor(color)"
           />
         </div>
       </div>

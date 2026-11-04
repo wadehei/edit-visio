@@ -130,6 +130,7 @@ interface ComponentSchema {
 ### 组件系统
 
 组件分为三类：
+
 - **基础组件**：文本、按钮、图片、容器等
 - **业务组件**：轮播图、表单、商品卡片等
 - **自定义组件**：用户扩展的组件
@@ -137,6 +138,7 @@ interface ComponentSchema {
 ### 状态管理
 
 使用 Pinia 管理编辑器状态：
+
 - `page`：当前页面 Schema
 - `selectedId`：选中的组件 ID
 - `history`：操作历史（支持撤销/重做）
@@ -214,6 +216,7 @@ export const MyComponentMeta: ComponentMeta = {
 ```
 
 类型：
+
 - `feat`: 新功能
 - `fix`: 修复 bug
 - `docs`: 文档更新
@@ -256,11 +259,11 @@ import { ref } from 'vue';
 
 export const useEditorStore = defineStore('editor', () => {
   const page = ref<PageSchema>(createDefaultPage());
-  
+
   const addComponent = (type: string) => {
     // ...
   };
-  
+
   return { page, addComponent };
 });
 ```

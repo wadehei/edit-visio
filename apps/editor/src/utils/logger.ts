@@ -7,8 +7,6 @@
 
 const isDev = import.meta.env.DEV;
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
 function formatMessage(tag: string, message: string): string {
   return `[${tag}] ${message}`;
 }
@@ -16,11 +14,13 @@ function formatMessage(tag: string, message: string): string {
 export const logger = {
   debug(tag: string, message: string, ...data: unknown[]): void {
     if (!isDev) return;
+    // eslint-disable-next-line no-console -- 日志工具是 console 的唯一出口
     console.debug(formatMessage(tag, message), ...data);
   },
 
   info(tag: string, message: string, ...data: unknown[]): void {
     if (!isDev) return;
+    // eslint-disable-next-line no-console -- 日志工具是 console 的唯一出口
     console.info(formatMessage(tag, message), ...data);
   },
 

@@ -7,9 +7,9 @@
   >
     <!-- 收藏按钮 -->
     <button
-      @click.stop="$emit('toggle-favorite')"
       class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
       :class="isFavorite ? 'text-yellow-500' : 'text-gray-400 hover:text-yellow-500'"
+      @click.stop="$emit('toggle-favorite')"
     >
       <Star :size="12" :fill="isFavorite ? 'currentColor' : 'none'" />
     </button>

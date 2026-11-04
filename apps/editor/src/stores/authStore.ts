@@ -44,7 +44,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** 注册 */
   async function register(username: string, password: string, email?: string) {
-    const { data } = await authApi.register({ username, password, confirmPassword: password, email });
+    const { data } = await authApi.register({
+      username,
+      password,
+      confirmPassword: password,
+      email,
+    });
     setTokens(data.data.accessToken, data.data.refreshToken);
     user.value = data.data.user;
   }

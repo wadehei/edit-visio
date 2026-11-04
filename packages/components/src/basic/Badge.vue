@@ -6,6 +6,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { CSSProperties } from 'vue';
 import type { ComponentSchema } from '@page-builder/shared';
 
 interface Props {
@@ -20,7 +21,7 @@ interface BadgeProps {
   size?: 'small' | 'medium' | 'large';
 }
 
-const badgeProps = computed(() => props.schema.props as BadgeProps);
+const badgeProps = computed(() => props.schema.props as unknown as BadgeProps);
 
 const text = computed(() => badgeProps.value.text);
 const type = computed(() => badgeProps.value.type || 'default');
@@ -40,7 +41,7 @@ const sizeMap: Record<string, { padding: string; fontSize: string }> = {
   large: { padding: '6px 16px', fontSize: '16px' },
 };
 
-const badgeStyles = computed(() => ({
+const badgeStyles = computed<CSSProperties>(() => ({
   display: 'inline-block',
   padding: sizeMap[size.value].padding,
   fontSize: sizeMap[size.value].fontSize,
@@ -48,6 +49,6 @@ const badgeStyles = computed(() => ({
   color: colorMap[type.value].color,
   border: `1px solid ${colorMap[type.value].border}`,
   borderRadius: '4px',
-  ...props.schema.styles,
+  ...(props.schema.styles as CSSProperties),
 }));
 </script>

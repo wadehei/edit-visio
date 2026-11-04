@@ -10,7 +10,10 @@ export function setupGlobalErrorHandlers(app: App): void {
   // Vue 组件渲染/生命周期/事件处理中的错误
   app.config.errorHandler = (err, instance, info) => {
     logger.error('Vue', '组件异常', err);
-    logger.error('Vue', `Component: ${instance?.$options?.name || instance?.$options?.__name || '<anonymous>'}`);
+    logger.error(
+      'Vue',
+      `Component: ${instance?.$options?.name || instance?.$options?.__name || '<anonymous>'}`,
+    );
     logger.error('Vue', `Info: ${info}`);
 
     toast('页面出现异常，请刷新重试', 'error');

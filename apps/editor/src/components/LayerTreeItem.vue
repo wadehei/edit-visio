@@ -1,9 +1,6 @@
 <template>
   <div class="space-y-1">
-    <div
-      v-for="component in components"
-      :key="component.id"
-    >
+    <div v-for="component in components" :key="component.id">
       <div
         class="flex items-center px-2 py-1 rounded cursor-pointer hover:bg-gray-100"
         :class="{ 'bg-blue-50 text-blue-600': selectedId === component.id }"
@@ -14,9 +11,9 @@
           {{ getComponentLabel(component) }}
         </span>
         <button
-          @click.stop="deleteComponent(component.id)"
           class="text-red-500 hover:text-red-700 text-xs"
           title="删除"
+          @click.stop="deleteComponent(component.id)"
         >
           ×
         </button>

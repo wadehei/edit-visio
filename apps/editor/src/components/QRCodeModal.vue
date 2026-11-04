@@ -7,22 +7,30 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">扫码预览</h2>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <button
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          @click="closeModal"
+        >
           ×
         </button>
       </div>
 
       <div class="flex flex-col items-center">
         <div v-if="qrCodeUrl" class="mb-4">
-          <img :src="qrCodeUrl" alt="QR Code" class="border border-gray-200 dark:border-gray-700 rounded" />
+          <img
+            :src="qrCodeUrl"
+            alt="QR Code"
+            class="border border-gray-200 dark:border-gray-700 rounded"
+          />
         </div>
-        <div v-else class="w-64 h-64 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+        <div
+          v-else
+          class="w-64 h-64 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded"
+        >
           <span class="text-gray-400">生成中...</span>
         </div>
 
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          使用手机扫描二维码预览页面
-        </p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">使用手机扫描二维码预览页面</p>
 
         <div class="w-full">
           <label class="block text-sm text-gray-700 dark:text-gray-300 mb-2">预览地址</label>
@@ -36,14 +44,14 @@
 
         <div class="flex gap-2 mt-4 w-full">
           <button
-            @click="copyUrl"
             class="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            @click="copyUrl"
           >
             复制地址
           </button>
           <button
-            @click="openInNewTab"
             class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            @click="openInNewTab"
           >
             新窗口打开
           </button>
@@ -78,7 +86,7 @@ const closeModal = () => {
 const generateQRCode = async () => {
   try {
     // 生成预览 URL（实际项目中应该是真实的预览地址）
-    const previewData = JSON.stringify(page.value);
+    const previewData = JSON.stringify(page);
     const encodedData = encodeURIComponent(previewData);
     const url = `${window.location.origin}/preview?data=${encodedData}`;
     previewUrl.value = url;
@@ -111,7 +119,7 @@ const openInNewTab = () => {
   window.open(previewUrl.value, '_blank');
 };
 
-watch(() => page.value, generateQRCode, { deep: true });
+watch(() => page, generateQRCode, { deep: true });
 
 defineExpose({ openModal });
 </script>
