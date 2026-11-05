@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# pre-commit 仅做 lint-staged（格式化 + lint），类型错误与测试失败在此拦截
+pnpm typecheck && pnpm test
