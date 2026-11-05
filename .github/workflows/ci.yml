@@ -31,8 +31,18 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: 单元测试
-        run: pnpm test
+      # 带覆盖率运行：vitest 会在覆盖率低于 thresholds 时失败，从而拦截覆盖率倒退。
+      # 不可只跑 pnpm test——它不带 --coverage，门槛不会生效。
+      - name: 单元测试与覆盖率
+        run: pnpm test:coverage
+
+      - name: 上传覆盖率报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: apps/editor/coverage/coverage-final.json
+          retention-days: 7
 
       - name: 构建
         run: pnpm build
