@@ -196,6 +196,20 @@ describe('editorStore', () => {
       store.addComponent('text', 'root', 1, { content: 'replacement' }, {});
       expect(store.history.future).toHaveLength(0);
     });
+
+    it('should keep history snapshots isolated from later edits', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'v1' }, {});
+      const compId = store.page.children[0].id;
+
+      // 后续编辑基于结构共享生成新组件对象，不应污染 history 中保存的旧快照
+      store.updateComponent(compId, { props: { content: 'v2' } });
+      const lastSnapshot = store.history.past[store.history.past.length - 1];
+      expect(lastSnapshot.schema.children[0].props.content).toBe('v1');
+
+      store.undo();
+      expect(store.page.children[0].props.content).toBe('v1');
+    });
   });
 
   describe('canvas controls', () => {
@@ -379,6 +393,399 @@ describe('editorStore', () => {
       const before = store.saveVersion;
       store.setPage({ ...store.page, name: 'updated' });
       expect(store.saveVersion).toBe(before + 1);
+    });
+  });
+
+  describe('selection & multi-select', () => {
+    it('should sync selectedIds with setSelectedId', () => {
+      const store = useEditorStore();
+      store.setSelectedId('a');
+      expect(store.selectedIds).toEqual(['a']);
+
+      store.setSelectedId(null);
+      expect(store.selectedIds).toEqual([]);
+    });
+
+    it('should add an unselected id and point selectedId at it', () => {
+      const store = useEditorStore();
+      store.toggleSelection('a');
+      expect(store.selectedIds).toEqual(['a']);
+      expect(store.selectedId).toBe('a');
+
+      store.toggleSelection('b');
+      expect(store.selectedIds).toEqual(['a', 'b']);
+      // selectedId 始终指向最后选中的
+      expect(store.selectedId).toBe('b');
+    });
+
+    it('should remove an already-selected id when toggled again', () => {
+      const store = useEditorStore();
+      store.toggleSelection('a');
+      store.toggleSelection('b');
+      store.toggleSelection('a');
+
+      expect(store.selectedIds).not.toContain('a');
+      expect(store.selectedIds).toEqual(['b']);
+      expect(store.selectedId).toBe('b');
+    });
+
+    it('should clear selectedId once the last selection is toggled off', () => {
+      const store = useEditorStore();
+      store.toggleSelection('a');
+      store.toggleSelection('a');
+
+      expect(store.selectedIds).toEqual([]);
+      expect(store.selectedId).toBeNull();
+    });
+
+    it('should report isMultiSelect only when more than one id is selected', () => {
+      const store = useEditorStore();
+      expect(store.isMultiSelect).toBe(false);
+      store.toggleSelection('a');
+      expect(store.isMultiSelect).toBe(false);
+      store.toggleSelection('b');
+      expect(store.isMultiSelect).toBe(true);
+      store.toggleSelection('b');
+      expect(store.isMultiSelect).toBe(false);
+    });
+
+    it('should resolve selectedComponents and drop ids that no longer exist', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      const aId = store.page.children[0].id;
+
+      store.setSelectedId(aId);
+      store.toggleSelection('ghost-id');
+
+      expect(store.selectedComponents).toHaveLength(1);
+      expect(store.selectedComponents[0].id).toBe(aId);
+      expect(store.selectedComponents[0].props.content).toBe('A');
+    });
+
+    it('should toggle the dragging flag', () => {
+      const store = useEditorStore();
+      expect(store.isDragging).toBe(false);
+      store.setDragging(true);
+      expect(store.isDragging).toBe(true);
+      store.setDragging(false);
+      expect(store.isDragging).toBe(false);
+    });
+  });
+
+  describe('clipboard (copy / paste)', () => {
+    it('should copy the single selected component', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      const aId = store.page.children[0].id;
+      store.setSelectedId(aId);
+
+      store.copyComponent();
+
+      expect(store.clipboard).toHaveLength(1);
+      expect(store.clipboard[0].id).toBe(aId);
+      expect(store.clipboard[0].props.content).toBe('A');
+    });
+
+    it('should copy every component when multiple are selected', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.addComponent('text', 'root', 1, { content: 'B' }, {});
+      const [a, b] = store.page.children;
+      store.setSelectedId(a.id);
+      store.toggleSelection(b.id);
+
+      store.copyComponent();
+
+      expect(store.clipboard).toHaveLength(2);
+      expect(store.clipboard.map((c) => c.props.content)).toEqual(['A', 'B']);
+      // 剪贴板存的是深拷贝，不与页面节点共享引用
+      expect(store.clipboard[0]).not.toBe(store.page.children[0]);
+    });
+
+    it('should leave the clipboard untouched when nothing is selected', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.setSelectedId(store.page.children[0].id);
+      store.copyComponent();
+      const copied = store.clipboard;
+
+      store.setSelectedId(null);
+      store.copyComponent();
+
+      expect(store.clipboard).toBe(copied);
+    });
+
+    it('should keep the clipboard when the selected id no longer exists', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.setSelectedId(store.page.children[0].id);
+      store.copyComponent();
+      const copied = store.clipboard;
+      expect(copied).toHaveLength(1);
+
+      // 选中一个已不存在的 id，再次复制不应清空或污染剪贴板
+      store.setSelectedId('ghost-id');
+      store.copyComponent();
+
+      expect(store.clipboard).toBe(copied);
+    });
+
+    it('should insert the copy right after the selected component', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.addComponent('text', 'root', 1, { content: 'B' }, {});
+      store.addComponent('text', 'root', 2, { content: 'C' }, {});
+      const bId = store.page.children[1].id;
+      store.setSelectedId(bId);
+      store.copyComponent();
+
+      store.pasteComponent();
+
+      expect(store.page.children).toHaveLength(4);
+      expect(store.page.children[0].props.content).toBe('A');
+      expect(store.page.children[1].id).toBe(bId); // 原 B 留在原位
+      expect(store.page.children[2].id).not.toBe(bId); // 副本紧随其后
+      expect(store.page.children[3].props.content).toBe('C');
+      expect(store.selectedId).toBe(store.page.children[2].id);
+    });
+
+    it('should append at the end when nothing is selected', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.setSelectedId(store.page.children[0].id);
+      store.copyComponent();
+      const beforeLen = store.page.children.length;
+
+      store.setSelectedId(null);
+      store.pasteComponent();
+
+      expect(store.page.children).toHaveLength(beforeLen + 1);
+      expect(store.page.children[store.page.children.length - 1].props.content).toBe('A');
+    });
+
+    it('should paste a multi-selection in order and select the last pasted', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.addComponent('text', 'root', 1, { content: 'B' }, {});
+      const [a, b] = store.page.children;
+      store.setSelectedId(a.id);
+      store.toggleSelection(b.id);
+      store.copyComponent();
+
+      store.setSelectedId(null);
+      store.pasteComponent();
+
+      expect(store.page.children).toHaveLength(4);
+      expect(store.page.children[2].props.content).toBe('A');
+      expect(store.page.children[3].props.content).toBe('B');
+      expect(store.selectedId).toBe(store.page.children[3].id);
+    });
+
+    it('should do nothing when pasting an empty clipboard', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      const before = store.page.children;
+      const historyLen = store.history.past.length;
+
+      store.pasteComponent();
+
+      expect(store.page.children).toBe(before);
+      expect(store.history.past).toHaveLength(historyLen);
+    });
+
+    it('should record paste in history', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.setSelectedId(store.page.children[0].id);
+      store.copyComponent();
+      const historyLen = store.history.past.length;
+
+      store.pasteComponent();
+
+      expect(store.history.past.length).toBe(historyLen + 1);
+    });
+  });
+
+  describe('deleteComponent (multi-select)', () => {
+    it('should delete every selected component when more than one is selected', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.addComponent('text', 'root', 1, { content: 'B' }, {});
+      store.addComponent('text', 'root', 2, { content: 'C' }, {});
+      const a = store.page.children[0];
+      const c = store.page.children[2];
+      store.setSelectedId(a.id);
+      store.toggleSelection(store.page.children[1].id);
+
+      store.deleteComponent(a.id);
+
+      expect(store.page.children).toHaveLength(1);
+      expect(store.page.children[0].id).toBe(c.id);
+      expect(store.selectedId).toBeNull();
+      expect(store.selectedIds).toEqual([]);
+    });
+
+    it('should delete only the given component when a single one is selected', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.addComponent('text', 'root', 1, { content: 'B' }, {});
+      const [a, b] = store.page.children;
+      store.setSelectedId(a.id);
+
+      store.deleteComponent(a.id);
+
+      expect(store.page.children).toHaveLength(1);
+      expect(store.page.children[0].id).toBe(b.id);
+    });
+
+    it('should delete the given component even if a different one is selected', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      store.addComponent('text', 'root', 1, { content: 'B' }, {});
+      const a = store.page.children[0];
+      const b = store.page.children[1];
+      store.setSelectedId(a.id);
+
+      store.deleteComponent(b.id);
+
+      expect(store.page.children).toHaveLength(1);
+      expect(store.page.children[0].id).toBe(a.id);
+      // 被删除的不是当前选中项，选中态应保留
+      expect(store.selectedId).toBe(a.id);
+      expect(store.selectedIds).toEqual([a.id]);
+    });
+  });
+
+  describe('nested container operations', () => {
+    const makeTree = (id: string) => ({
+      id,
+      type: 'text',
+      props: {},
+      styles: {},
+      children: [],
+    });
+
+    it('should add a component into a non-root parent', () => {
+      const store = useEditorStore();
+      store.addComponent('container', 'root', 0, {}, {});
+      const containerId = store.page.children[0].id;
+
+      store.addComponent('text', containerId, 0, { content: 'nested' }, {});
+
+      expect(store.page.children).toHaveLength(1);
+      expect(store.page.children[0].children).toHaveLength(1);
+      expect(store.page.children[0].children![0].props.content).toBe('nested');
+      expect(store.selectedId).toBe(store.page.children[0].children![0].id);
+    });
+
+    it('should move a component into a non-root parent', () => {
+      const store = useEditorStore();
+      store.addComponent('container', 'root', 0, {}, {});
+      const containerId = store.page.children[0].id;
+      store.addComponent('text', 'root', 1, { content: 'movable' }, {});
+      const movableId = store.page.children[1].id;
+      const historyLen = store.history.past.length;
+
+      store.moveComponent(movableId, containerId, 0);
+
+      expect(store.page.children).toHaveLength(1);
+      expect(store.page.children[0].children).toHaveLength(1);
+      expect(store.page.children[0].children![0].id).toBe(movableId);
+      expect(store.page.children[0].children![0].props.content).toBe('movable');
+      expect(store.history.past.length).toBe(historyLen + 1);
+    });
+
+    it('should insert a component tree into a non-root parent', () => {
+      const store = useEditorStore();
+      store.addComponent('container', 'root', 0, {}, {});
+      const containerId = store.page.children[0].id;
+
+      store.insertComponentTree(makeTree('inside-1'), containerId, 0);
+
+      expect(store.page.children[0].children).toHaveLength(1);
+      expect(store.page.children[0].children![0].id).toBe('inside-1');
+      expect(store.selectedId).toBe('inside-1');
+    });
+
+    it('should keep existing siblings when inserting a tree at root', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'existing' }, {});
+      const existingId = store.page.children[0].id;
+
+      store.insertComponentTree(makeTree('inserted-1'), 'root', 1);
+
+      expect(store.page.children).toHaveLength(2);
+      expect(store.page.children[0].id).toBe(existingId);
+      expect(store.page.children[0].props.content).toBe('existing');
+      expect(store.page.children[1].id).toBe('inserted-1');
+    });
+  });
+
+  describe('history bound & isRestoring', () => {
+    it('should cap history at MAX_HISTORY_SIZE (20) entries, keeping the most recent', () => {
+      const store = useEditorStore();
+      for (let i = 0; i < 25; i++) {
+        store.addComponent('text', 'root', 0, { content: `c${i}` }, {});
+      }
+
+      expect(store.history.past).toHaveLength(20);
+      // 每次 addComponent 先快照再加组件，故第 n 次快照含 n-1 个组件；
+      // 保留窗口为第 6..25 次快照 → 5..24 个组件
+      expect(store.history.past[0].schema.children).toHaveLength(5);
+      expect(store.history.past[19].schema.children).toHaveLength(24);
+    });
+
+    it('should move the current state into future on undo and back on redo', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      expect(store.history.past).toHaveLength(1);
+
+      store.undo();
+      expect(store.history.past).toHaveLength(0);
+      expect(store.history.future).toHaveLength(1);
+      expect(store.history.future[0].schema.children).toHaveLength(1);
+
+      store.redo();
+      expect(store.history.past).toHaveLength(1);
+      expect(store.history.future).toHaveLength(0);
+    });
+
+    it('should flag isRestoring during undo and reset it afterwards', async () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, {}, {});
+
+      store.undo();
+      expect(store.isRestoring).toBe(true);
+      await Promise.resolve();
+      expect(store.isRestoring).toBe(false);
+    });
+
+    it('should flag isRestoring during redo and reset it afterwards', async () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, {}, {});
+      store.undo();
+      // 先冲掉 undo 的微任务复位，避免掩盖 redo 自身的复位
+      await Promise.resolve();
+      expect(store.isRestoring).toBe(false);
+
+      store.redo();
+      expect(store.isRestoring).toBe(true);
+      await Promise.resolve();
+      expect(store.isRestoring).toBe(false);
+    });
+
+    it('should initialise transient state to empty / false', () => {
+      const store = useEditorStore();
+      expect(store.selectedIds).toEqual([]);
+      expect(store.clipboard).toEqual([]);
+      expect(store.isDragging).toBe(false);
+      expect(store.isRestoring).toBe(false);
+    });
+
+    it('should create new components with an empty children array', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, {}, {});
+      expect(store.page.children[0].children).toEqual([]);
     });
   });
 });

@@ -36,6 +36,7 @@ pnpm-debug.log*
 .tmp/
 .cache/
 .temp/
+.stryker-tmp/
 
 # Misc
 .turbo/
