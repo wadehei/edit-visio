@@ -85,7 +85,7 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
     cssCodeSplit: true,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -93,9 +93,10 @@ export default defineConfig({
           if (/[\\/]node_modules[\\/](vue|vue-router|pinia|@vue)[\\/]/.test(id))
             return 'vue-vendor';
           if (/[\\/]node_modules[\\/]lucide-vue-next[\\/]/.test(id)) return 'ui-vendor';
-          if (/[\\/]node_modules[\\/](axios|dompurify|qrcode)[\\/]/.test(id)) return 'utils-vendor';
-          if (/[\\/]node_modules[\\/](vue-draggable-plus|sortablejs)[\\/]/.test(id))
-            return 'drag-vendor';
+          // 仅将 axios 单独成 chunk（入口 request.ts 即使用，利于长期缓存）。
+          // 不要把 dompurify/qrcode 并入：它们只被懒加载的编辑器路由使用，
+          // 一旦并入本 chunk 会被入口连带的 modulepreload 变成首屏（含 /login）急加载。
+          if (/[\\/]node_modules[\\/]axios[\\/]/.test(id)) return 'utils-vendor';
           return undefined;
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
