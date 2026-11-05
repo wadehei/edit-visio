@@ -127,11 +127,18 @@ export const useEditorStore = defineStore('editor', () => {
     snapToGrid.value = !snapToGrid.value;
   };
 
+  /**
+   * 保存当前状态到历史。
+   *
+   * 这里只保存 page 的引用而非深拷贝：所有编辑动作都通过结构共享生成全新的 page 根对象
+   * （见 addComponent / updateComponentById 等），从不原地修改既有节点，因此历史快照与后续
+   * 状态互不影响。这样既省去每次编辑的全树 deepClone 开销，又让相邻历史状态共享未变动的子树。
+   */
   const saveToHistory = () => {
     // 保留最近 MAX_HISTORY_SIZE - 1 条，加上新保存的一条共 MAX_HISTORY_SIZE 条
     const past = history.value.past.slice(-(MAX_HISTORY_SIZE - 1));
     history.value = {
-      past: [...past, { schema: deepClone(page.value), timestamp: Date.now() }],
+      past: [...past, { schema: page.value, timestamp: Date.now() }],
       future: [],
     };
     saveVersion.value++;
@@ -225,7 +232,8 @@ export const useEditorStore = defineStore('editor', () => {
 
     history.value = {
       past: newPast,
-      future: [{ schema: deepClone(page.value), timestamp: Date.now() }, ...history.value.future],
+      // 同 saveToHistory：page 为结构共享的不可变快照，直接存引用即可
+      future: [{ schema: page.value, timestamp: Date.now() }, ...history.value.future],
     };
     page.value = previous.schema;
     saveVersion.value++;
@@ -243,7 +251,7 @@ export const useEditorStore = defineStore('editor', () => {
     const newFuture = history.value.future.slice(1);
 
     history.value = {
-      past: [...history.value.past, { schema: deepClone(page.value), timestamp: Date.now() }],
+      past: [...history.value.past, { schema: page.value, timestamp: Date.now() }],
       future: newFuture,
     };
     page.value = next.schema;
