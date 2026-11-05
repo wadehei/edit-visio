@@ -340,7 +340,7 @@ async function loadProjects() {
 }
 
 function openProject(project: Project) {
-  router.push(`/editor/${project.projectId}`);
+  void router.push(`/editor/${project.projectId}`);
 }
 
 async function handleCreateProject() {
@@ -377,12 +377,12 @@ async function handleDeleteProject(project: Project) {
 function renameProject(project: Project) {
   const name = prompt('新名称:', project.name);
   if (!name || name === project.name) return;
-  projectApi.updateProject(String(project.projectId), { name }).then(() => loadProjects());
+  void projectApi.updateProject(String(project.projectId), { name }).then(() => loadProjects());
 }
 
 async function handleLogout() {
   await authStore.logout();
-  router.push('/login');
+  await router.push('/login');
 }
 
 function formatDate(dateStr: string): string {

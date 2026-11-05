@@ -95,7 +95,9 @@ const getPropValue = (propName: string): unknown => {
 /** 文本类绑定需要 string 类型：将未知取值收窄为字符串 */
 const getPropString = (propName: string): string => {
   const value = props.componentProps[propName];
-  return value == null ? '' : String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
 };
 
 /** 布尔类绑定需要 boolean 类型：将未知取值收窄为布尔值 */

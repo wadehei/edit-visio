@@ -86,7 +86,7 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
         projectId,
         String(pageId.value),
         {
-          schema: deepClone(page.value) as unknown as Record<string, unknown>,
+          schema: deepClone(page.value),
         },
         { signal },
       );
@@ -114,7 +114,7 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
     if (saveTimer) {
       clearTimeout(saveTimer);
     }
-    saveTimer = setTimeout(saveToAPI, AUTO_SAVE_INTERVAL);
+    saveTimer = setTimeout(() => void saveToAPI(), AUTO_SAVE_INTERVAL);
   });
 
   // 组件卸载时清理定时器和进行中的请求，防止内存泄漏
@@ -143,7 +143,7 @@ export function useTemplates() {
   const applyTemplate = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
     if (template) {
-      setPage(deepClone(template.data) as PageSchema);
+      setPage(deepClone<PageSchema>(template.data));
     }
   };
 

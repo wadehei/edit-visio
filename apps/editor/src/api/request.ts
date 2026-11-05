@@ -34,7 +34,7 @@ request.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => Promise.reject(error instanceof Error ? error : new Error(String(error))),
 );
 
 // 是否正在刷新 token
@@ -94,7 +94,9 @@ request.interceptors.response.use(
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
-        return Promise.reject(refreshError);
+        return Promise.reject(
+          refreshError instanceof Error ? refreshError : new Error(String(refreshError)),
+        );
       } finally {
         isRefreshing = false;
       }

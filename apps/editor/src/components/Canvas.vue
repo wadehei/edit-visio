@@ -209,13 +209,7 @@ const handleDrop = (e: DragEvent) => {
   if (componentType) {
     const meta = getMeta(componentType);
     const index = page.value.children.length;
-    addComponent(
-      componentType,
-      'root',
-      index,
-      (meta?.defaultProps as Record<string, unknown>) || {},
-      (meta?.defaultStyles as Record<string, string>) || {},
-    );
+    addComponent(componentType, 'root', index, meta?.defaultProps || {}, meta?.defaultStyles || {});
     setDragging(false);
   }
 };

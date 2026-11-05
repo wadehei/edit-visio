@@ -98,7 +98,7 @@ const closeModal = () => {
   showModal.value = false;
 };
 
-const exportImage = async () => {
+const exportImage = () => {
   exporting.value = true;
 
   try {

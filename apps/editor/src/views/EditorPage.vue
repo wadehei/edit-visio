@@ -387,7 +387,7 @@ async function handleLogout() {
   } catch (error) {
     logger.error('EditorPage', 'Failed to logout', error);
   } finally {
-    router.push('/login');
+    await router.push('/login');
     toast('已退出登录', 'info');
   }
 }

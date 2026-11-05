@@ -6,6 +6,11 @@ import { escapeHTML, getComponentProps } from '@page-builder/shared';
 /** 将 camelCase CSS 属性转为 kebab-case 并构建 style 属性字符串 */
 function buildStyleAttr(component: ComponentSchema): string {
   const styles = Object.entries(component.styles)
+    // CSS 值只可能是字符串/数字，其余类型（如 CSSStyleDeclaration 上的方法）直接跳过
+    .filter((entry): entry is [string, string | number] => {
+      const value = entry[1];
+      return typeof value === 'string' || typeof value === 'number';
+    })
     .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
     .join('; ');
   return styles ? ` style="${styles}"` : '';

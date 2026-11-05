@@ -166,8 +166,8 @@ const handleContainerDrop = (e: DragEvent) => {
       componentType,
       props.component.id,
       index,
-      (meta?.defaultProps as Record<string, unknown>) || {},
-      (meta?.defaultStyles as Record<string, string>) || {},
+      meta?.defaultProps || {},
+      meta?.defaultStyles || {},
     );
   }
 };

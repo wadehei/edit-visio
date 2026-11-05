@@ -304,7 +304,7 @@ async function handleSubmit() {
     } else {
       await authStore.register(form.username, form.password, form.email || undefined);
     }
-    router.push('/');
+    await router.push('/');
   } catch (err: unknown) {
     const error = err as Error;
     errorMsg.value = error.message || '操作失败，请重试';
