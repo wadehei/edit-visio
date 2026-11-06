@@ -24,27 +24,34 @@ export default defineConfig({
         'src/main.ts', // 应用入口，不做单元测试
       ],
       // 覆盖率门槛：
-      // - 全局为 .ts 与 .vue 的合计基线（stmts 51.7 / branch 36.1 / funcs 49.2 / lines 51.7），
-      //   因大量视图/重型组件尚未覆盖而偏低，仅用于防止整体倒退；
-      // - src/**/*.ts 单独维持更高门槛（基线 96.1 / 87.9 / 96.1 / 96.6），保持纯 TS 代码的强约束；
-      // - src/components/**/*.vue 单独设门槛（基线 15.2 / 12.7 / 14.7 / 15.3，含 property-panel 子目录），
-      //   防止组件用例倒退。
+      // - 全局为 .ts 与 .vue 的合计基线（stmts 95.1 / branch 89.2 / funcs 91.0 / lines 95.8），
+      //   视图层与组件层补齐用例后整体已较高，用于防止整体倒退；
+      // - src/**/*.ts 单独维持更高门槛（基线 96.8 / 88.4 / 96.1），保持纯 TS 代码的强约束；
+      // - src/components/**/*.vue 单独设门槛（基线 94.9 / 90.5 / 89.3），防止组件用例倒退；
+      // - src/views/**/*.vue 单独设门槛（基线 89.6 / 87.3 / 73.8），防止视图用例倒退。
+      // 说明：v8 覆盖率报告不输出行级明细，各行门槛按略低于对应 statements 基线取值。
       thresholds: {
-        statements: 50,
-        branches: 34,
-        functions: 47,
-        lines: 50,
+        statements: 93,
+        branches: 87,
+        functions: 89,
+        lines: 93,
         'src/**/*.ts': {
-          statements: 94,
-          branches: 85,
-          functions: 94,
-          lines: 94,
+          statements: 95,
+          branches: 86,
+          functions: 95,
+          lines: 95,
         },
         'src/components/**/*.vue': {
-          statements: 14,
-          branches: 11,
-          functions: 13,
-          lines: 14,
+          statements: 93,
+          branches: 88,
+          functions: 87,
+          lines: 93,
+        },
+        'src/views/**/*.vue': {
+          statements: 87,
+          branches: 85,
+          functions: 71,
+          lines: 87,
         },
       },
     },
