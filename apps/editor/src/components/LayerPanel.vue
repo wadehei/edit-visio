@@ -51,6 +51,7 @@
 import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { getComponentLabel } from '@page-builder/shared';
+import LayerTreeItem from './LayerTreeItem.vue';
 
 const editorStore = useEditorStore();
 // state：必须用 storeToRefs 保持响应性
