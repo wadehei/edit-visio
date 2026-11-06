@@ -77,6 +77,12 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  define: {
+    // 仅使用组合式 API（<script setup>）：关闭 Options API 支持以减小 Vue 运行时体积。
+    __VUE_OPTIONS_API__: false,
+    // 生产构建关闭 devtools，避免打包 @vue/devtools-api 相关代码。
+    __VUE_PROD_DEVTOOLS__: false,
+  },
   server: {
     port: 3000,
     open: true,
