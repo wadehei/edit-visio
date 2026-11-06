@@ -44,5 +44,9 @@ jobs:
           path: apps/editor/coverage/coverage-final.json
           retention-days: 7
 
+      # 变异测试：stryker 在总分低于 thresholds.break 时返回非零，拦截测试有效性倒退。
+      - name: 变异测试
+        run: pnpm test:mutation
+
       - name: 构建
         run: pnpm build
