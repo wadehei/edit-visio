@@ -170,6 +170,19 @@ describe('editorStore', () => {
       expect(store.page.children[0].props.content).toBe('hello');
     });
 
+    it('should push a valid snapshot on redo so it can be undone again', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'hello' }, {});
+
+      store.undo();
+      store.redo();
+      expect(store.page.children).toHaveLength(1);
+
+      // redo 写入的历史条目必须含 schema，否则再次 undo 会丢失状态
+      store.undo();
+      expect(store.page.children).toHaveLength(0);
+    });
+
     it('should do nothing when undo history is empty', () => {
       const store = useEditorStore();
       const pageBefore = store.page;
@@ -287,6 +300,18 @@ describe('editorStore', () => {
     it('should return undefined for non-existent ID', () => {
       const store = useEditorStore();
       expect(store.getComponentById('non-existent')).toBeUndefined();
+    });
+
+    it('should index leaf components that omit the optional children field', () => {
+      const store = useEditorStore();
+      // children 为可选字段：叶子组件可省略，索引时不应递归进入 undefined
+      store.setPage({
+        ...store.page,
+        children: [{ id: 'leaf', type: 'text', props: {}, styles: {} }],
+      });
+
+      expect(store.getComponentById('leaf')).toBeDefined();
+      expect(store.getComponentById('leaf')!.id).toBe('leaf');
     });
   });
 
@@ -500,6 +525,20 @@ describe('editorStore', () => {
       expect(store.clipboard.map((c) => c.props.content)).toEqual(['A', 'B']);
       // 剪贴板存的是深拷贝，不与页面节点共享引用
       expect(store.clipboard[0]).not.toBe(store.page.children[0]);
+    });
+
+    it('should skip missing ids when copying a multi-selection', () => {
+      const store = useEditorStore();
+      store.addComponent('text', 'root', 0, { content: 'A' }, {});
+      const aId = store.page.children[0].id;
+      store.setSelectedId(aId);
+      store.toggleSelection('ghost-id');
+
+      store.copyComponent();
+
+      // 多选中失效的 id 应被过滤，不得进入剪贴板
+      expect(store.clipboard).toHaveLength(1);
+      expect(store.clipboard[0].id).toBe(aId);
     });
 
     it('should leave the clipboard untouched when nothing is selected', () => {

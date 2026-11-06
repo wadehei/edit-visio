@@ -133,6 +133,74 @@ describe('request 拦截器', () => {
 
     expect(refreshSpy).toHaveBeenCalledTimes(1);
     expect([r1.data.data, r2.data.data].sort()).toEqual(['a', 'b']);
+    // 排队请求重放时同样应带 Bearer 前缀（覆盖排队分支的鉴权头）
+    expect(seenAuthHeaders.filter((h) => h === 'Bearer shared-token')).toHaveLength(2);
+  });
+
+  it('重放后再次 401 时不再触发刷新（_retry 防死循环）', async () => {
+    const authStore = useAuthStore();
+    const refreshSpy = vi.spyOn(authStore, 'doRefreshToken').mockResolvedValue('new-token');
+    queue(
+      { status: 401, payload: { code: 401, message: 'unauthorized' } },
+      { status: 401, payload: { code: 401, message: 'unauthorized' } },
+    );
+
+    await expect(request.get('/secure')).rejects.toThrow('unauthorized');
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('刷新失败会清空排队订阅者，后续刷新不再误触', async () => {
+    const authStore = useAuthStore();
+    let rejectRefresh: (reason: unknown) => void = () => {};
+    const refreshSpy = vi
+      .spyOn(authStore, 'doRefreshToken')
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((_, reject) => {
+            rejectRefresh = reject;
+          }),
+      )
+      .mockResolvedValueOnce('recovered-token');
+
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { pathname: '/login', href: '/login' },
+      configurable: true,
+      writable: true,
+    });
+
+    try {
+      queue(
+        { status: 401, payload: { code: 401, message: 'unauthorized' } }, // A：触发刷新
+        { status: 401, payload: { code: 401, message: 'unauthorized' } }, // B：排队等待
+      );
+      const first = request.get('/a');
+      const second = request.get('/b');
+      second.catch(() => {});
+
+      // 等两个请求都进入 401 分支、B 已加入排队
+      await vi.waitFor(() => expect(seenAuthHeaders).toHaveLength(2));
+      await Promise.resolve();
+
+      rejectRefresh(new Error('refresh failed'));
+      await expect(first).rejects.toThrow('refresh failed');
+
+      // 第二次刷新成功：若刷新失败时未清空订阅者，残留项会在此抛错
+      queue(
+        { status: 401, payload: { code: 401, message: 'unauthorized' } },
+        { status: 200, payload: { code: 0, data: { ok: true }, message: 'ok' } },
+      );
+      const third = request.get('/c');
+
+      await expect(third).resolves.toBeDefined();
+      expect(refreshSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        configurable: true,
+        writable: true,
+      });
+    }
   });
 
   it('刷新接口自身 401 时不进入刷新重试循环', async () => {
