@@ -289,6 +289,57 @@ describe('useTheme', () => {
     expect(removeListenerCalls).toHaveLength(1);
     expect(removeListenerCalls[0].cb).toBe(addListenerCalls[0].cb);
   });
+
+  it('读取本地配置异常时回退默认主题并记录错误', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('read failure');
+    });
+
+    const { result } = mountComposable(() => useTheme());
+
+    expect(result.themeConfig.value.mode).toBe('light');
+    expect(errorSpy).toHaveBeenCalled();
+    getItemSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('保存配置异常时记录错误但不抛出', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = mountComposable(() => useTheme());
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('write failure');
+    });
+
+    expect(() => result.setPrimaryColor('#123456')).not.toThrow();
+
+    expect(errorSpy).toHaveBeenCalled();
+    setItemSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('system 模式下系统主题变化时重新应用主题', () => {
+    const { result } = mountComposable(() => useTheme());
+    // 先切换系统偏好再进入 system 模式，避免命中 computed 缓存
+    prefersDark = true;
+    result.setThemeMode('system');
+    document.documentElement.classList.remove('dark');
+
+    addListenerCalls[0].cb({ matches: true } as MediaQueryListEvent);
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+  });
+
+  it('非 system 模式下系统主题变化不改变主题', () => {
+    const { result } = mountComposable(() => useTheme());
+    expect(result.themeConfig.value.mode).toBe('light');
+    document.documentElement.classList.remove('dark');
+
+    prefersDark = true;
+    addListenerCalls[0].cb({ matches: true } as MediaQueryListEvent);
+
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
 });
 
 describe('useKeyboardShortcuts', () => {

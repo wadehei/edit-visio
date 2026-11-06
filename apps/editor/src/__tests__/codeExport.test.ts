@@ -178,4 +178,63 @@ describe('exportToVue', () => {
     );
     expect(sfc).toContain('<div>\n      <div>x</div>\n    </div>');
   });
+
+  it('text / button / image 应生成对应标签', () => {
+    const sfc = exportToVue(
+      page([
+        comp({ type: 'text', props: { content: 'hi' } }),
+        comp({ type: 'button', props: { text: '提交' } }),
+        comp({ type: 'image', props: { src: 'a.png', alt: '图' } }),
+      ]),
+    );
+    expect(sfc).toContain('<div>hi</div>');
+    expect(sfc).toContain('<button>提交</button>');
+    expect(sfc).toContain('<img src="a.png" alt="图" />');
+  });
+
+  it('divider / spacer / badge 应生成对应标签', () => {
+    const sfc = exportToVue(
+      page([
+        comp({ type: 'divider' }),
+        comp({ type: 'spacer' }),
+        comp({ type: 'badge', props: { text: 'A&B' } }),
+      ]),
+    );
+    expect(sfc).toContain('<hr />');
+    expect(sfc).toContain('<div></div>');
+    expect(sfc).toContain('<span>A&amp;B</span>');
+  });
+
+  it('card 应根据 title/footer 可选渲染', () => {
+    const withBoth = exportToVue(
+      page([comp({ type: 'card', props: { title: '标题', footer: '底部' } })]),
+    );
+    expect(withBoth).toContain('标题');
+    expect(withBoth).toContain('底部');
+
+    const bare = exportToVue(page([comp({ type: 'card' })]));
+    expect(bare).not.toContain('border-bottom');
+    expect(bare).not.toContain('border-top');
+  });
+
+  it('input 应仅在提供 label 时渲染 label', () => {
+    const withLabel = exportToVue(
+      page([
+        comp({
+          type: 'input',
+          props: { label: '姓名', inputType: 'email', placeholder: '请输入' },
+        }),
+      ]),
+    );
+    expect(withLabel).toContain('>姓名</label>');
+    expect(withLabel).toContain('<input type="email" placeholder="请输入" />');
+
+    const noLabel = exportToVue(page([comp({ type: 'input' })]));
+    expect(noLabel).not.toContain('<label');
+    expect(noLabel).toContain('<input type="text" placeholder="" />');
+  });
+
+  it('未知组件类型应输出占位说明', () => {
+    expect(exportToVue(page([comp({ type: 'mystery' })]))).toContain('Unknown component: mystery');
+  });
 });

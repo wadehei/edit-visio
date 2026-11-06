@@ -4,6 +4,11 @@ import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import request from '../api/request';
 import { useAuthStore } from '../stores/authStore';
 
+const loggerError = vi.hoisted(() => vi.fn());
+vi.mock('../utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: loggerError },
+}));
+
 /** 测试用例预先编排的响应序列，adapter 按顺序消费 */
 interface PlannedResponse {
   status: number;
@@ -59,6 +64,7 @@ describe('request 拦截器', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it('请求拦截器应附加 Bearer token', async () => {
@@ -76,6 +82,12 @@ describe('request 拦截器', () => {
     queue({ status: 200, payload: { code: 1, data: null, message: '参数错误' } });
 
     await expect(request.get('/x')).rejects.toThrow('参数错误');
+  });
+
+  it('业务 code 非 0 且 message 为空时使用默认文案', async () => {
+    queue({ status: 200, payload: { code: 1, data: null, message: '' } });
+
+    await expect(request.get('/x')).rejects.toThrow('请求失败');
   });
 
   it('401 时应刷新 token 并重放原请求', async () => {
@@ -140,7 +152,7 @@ describe('request 拦截器', () => {
     // 让 pathname 为 /login，避免 jsdom 因 window.location.href 赋值触发导航未实现告警
     const originalLocation = window.location;
     Object.defineProperty(window, 'location', {
-      value: { pathname: '/login', href: '/login' },
+      value: { pathname: '/login', href: '/login-original' },
       configurable: true,
       writable: true,
     });
@@ -151,6 +163,8 @@ describe('request 拦截器', () => {
       await expect(request.get('/secure')).rejects.toThrow('refresh failed');
       expect(authStore.isLoggedIn).toBe(false);
       expect(authStore.accessToken).toBeNull();
+      // 已在登录页，不应再触发跳转
+      expect(window.location.href).toBe('/login-original');
     } finally {
       Object.defineProperty(window, 'location', {
         value: originalLocation,
@@ -158,5 +172,125 @@ describe('request 拦截器', () => {
         writable: true,
       });
     }
+  });
+
+  it('刷新失败且不在登录页时应跳转到登录页', async () => {
+    const authStore = useAuthStore();
+    vi.spyOn(authStore, 'doRefreshToken').mockRejectedValue(new Error('refresh failed'));
+
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { pathname: '/dashboard', href: '/dashboard' },
+      configurable: true,
+      writable: true,
+    });
+
+    try {
+      queue({ status: 401, payload: { code: 401, message: 'unauthorized' } });
+
+      await expect(request.get('/secure')).rejects.toThrow('refresh failed');
+      expect(window.location.href).toBe('/login');
+    } finally {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+});
+
+describe('request 实例默认配置', () => {
+  it('默认超时 15s 且携带凭证', () => {
+    expect(request.defaults.timeout).toBe(15_000);
+    expect(request.defaults.withCredentials).toBe(true);
+  });
+
+  it('配置了 VITE_API_BASE_URL 时使用该值且不告警', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com');
+    loggerError.mockClear();
+    vi.resetModules();
+
+    const mod = await import('../api/request');
+
+    expect(mod.default.defaults.baseURL).toBe('https://api.example.com');
+    expect(loggerError).not.toHaveBeenCalled();
+  });
+
+  it('未配置 VITE_API_BASE_URL 时回退 /api/v1 并记录错误', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', '');
+    loggerError.mockClear();
+    vi.resetModules();
+
+    const mod = await import('../api/request');
+
+    expect(mod.default.defaults.baseURL).toBe('/api/v1');
+    expect(loggerError).toHaveBeenCalledWith('API', expect.stringContaining('VITE_API_BASE_URL'));
+  });
+});
+
+describe('request 请求拦截器错误分支', () => {
+  function requestRejectHandler(): (error: unknown) => Promise<unknown> {
+    const manager = request.interceptors.request as unknown as {
+      handlers: Array<{ rejected?: (error: unknown) => Promise<unknown> }> | null;
+    };
+    const handler = manager.handlers?.[0];
+    if (!handler?.rejected) throw new Error('请求错误拦截器未注册');
+    return handler.rejected;
+  }
+
+  it('非 Error 值被归一化为 Error 后 reject', async () => {
+    const onRejected = requestRejectHandler();
+
+    await expect(onRejected('plain-failure')).rejects.toThrow('plain-failure');
+  });
+
+  it('Error 实例原样透传', async () => {
+    const onRejected = requestRejectHandler();
+    const original = new Error('boom');
+
+    await expect(onRejected(original)).rejects.toBe(original);
+  });
+});
+
+describe('request 非 401 错误信息提取', () => {
+  /** 构造无响应体的网络错误（保留 config，模拟真实 adapter 行为） */
+  function networkAdapter(message: string): AxiosAdapter {
+    return (config) => {
+      const error = new Error(message) as Error & { config?: unknown };
+      error.config = config;
+      return Promise.reject(error);
+    };
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    planned = [];
+    seenAuthHeaders = [];
+    request.defaults.adapter = planAdapter;
+  });
+
+  it('优先使用响应体 message', async () => {
+    queue({ status: 500, payload: { code: 500, message: 'server boom' } });
+
+    await expect(request.get('/boom')).rejects.toThrow('server boom');
+  });
+
+  it('响应体 data 缺失时回退到 error.message', async () => {
+    queue({ status: 500 });
+
+    await expect(request.get('/x')).rejects.toThrow('Request failed with status code 500');
+  });
+
+  it('无响应且无 message 时回退到 网络错误', async () => {
+    request.defaults.adapter = networkAdapter('');
+
+    await expect(request.get('/x')).rejects.toThrow('网络错误');
+  });
+
+  it('无响应但存在 message 时使用 error.message', async () => {
+    request.defaults.adapter = networkAdapter('network down');
+
+    await expect(request.get('/x')).rejects.toThrow('network down');
   });
 });

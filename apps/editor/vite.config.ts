@@ -90,12 +90,12 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
-          if (/[\\/]node_modules[\\/](vue|vue-router|pinia|@vue)[\\/]/.test(id))
-            return 'vue-vendor';
-          if (/[\\/]node_modules[\\/]lucide-vue-next[\\/]/.test(id)) return 'ui-vendor';
           // 仅将 axios 单独成 chunk（入口 request.ts 即使用，利于长期缓存）。
-          // 不要把 dompurify/qrcode 并入：它们只被懒加载的编辑器路由使用，
-          // 一旦并入本 chunk 会被入口连带的 modulepreload 变成首屏（含 /login）急加载。
+          // 不为 vue/lucide 单独拆包：Rollup 会把 @vue/shared|reactivity|runtime-core
+          // 并入 lucide 所在的 chunk，而入口（App.vue 渲染）静态依赖这些 Vue 内部模块，
+          // 结果使含 lucide 的 chunk 被首屏（含 /login）的 modulepreload 急加载。
+          // 交由默认分包后，Vue 运行时并入入口，lucide 只留在懒加载的 EditorPage 分片。
+          // 也不要把 dompurify/qrcode 并入本 chunk：它们只被懒加载的编辑器路由使用。
           if (/[\\/]node_modules[\\/]axios[\\/]/.test(id)) return 'utils-vendor';
           return undefined;
         },

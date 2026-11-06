@@ -18,13 +18,13 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/**/*.test.ts', 'src/**/*.spec.ts'],
-      // 覆盖率门槛：略低于当前基线（stmts 92.0 / branch 80.0 / funcs 95.2 / lines 92.6），
+      // 覆盖率门槛：略低于当前基线（stmts 96.1 / branch 87.6 / funcs 96.1 / lines 96.6），
       // 用于防止覆盖率倒退，同时留出小幅波动空间。
       thresholds: {
-        statements: 88,
-        branches: 75,
-        functions: 90,
-        lines: 88,
+        statements: 94,
+        branches: 85,
+        functions: 94,
+        lines: 94,
       },
     },
   },

@@ -28,7 +28,7 @@ const router = createRouter({
 });
 
 // 路由守卫：检查登录状态 + 恢复用户信息
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
   // access token 仅存内存，页面刷新会丢失：
@@ -37,17 +37,15 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.meta.requiresAuth !== false && !authStore.isLoggedIn) {
     // 需要登录但未登录 → 跳转到登录页
-    next({ name: 'Login', query: { redirect: to.fullPath } });
-  } else if (authStore.isLoggedIn) {
-    if (to.name === 'Login') {
-      // 已登录但访问登录页 → 跳转到首页
-      next({ name: 'Home' });
-    } else {
-      next();
-    }
-  } else {
-    next();
+    return { name: 'Login', query: { redirect: to.fullPath } };
   }
+
+  if (authStore.isLoggedIn && to.name === 'Login') {
+    // 已登录但访问登录页 → 跳转到首页
+    return { name: 'Home' };
+  }
+
+  return true;
 });
 
 export default router;

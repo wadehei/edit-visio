@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 describe('logger', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it('error 始终输出带标签前缀的日志', () => {
@@ -27,6 +28,42 @@ describe('logger', () => {
     expect(debugSpy).toHaveBeenCalledTimes(expected);
     expect(infoSpy).toHaveBeenCalledTimes(expected);
     expect(warnSpy).toHaveBeenCalledTimes(expected);
+  });
+
+  it('开发环境下 debug / info / warn 输出到 console', async () => {
+    vi.stubEnv('DEV', true);
+    vi.resetModules();
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { logger: devLogger } = await import('../utils/logger');
+
+    devLogger.debug('T', 'd');
+    devLogger.info('T', 'i');
+    devLogger.warn('T', 'w');
+
+    expect(debugSpy).toHaveBeenCalledWith('[T] d');
+    expect(infoSpy).toHaveBeenCalledWith('[T] i');
+    expect(warnSpy).toHaveBeenCalledWith('[T] w');
+  });
+
+  it('非开发环境下 debug / info / warn 直接返回不输出', async () => {
+    vi.stubEnv('DEV', false);
+    vi.resetModules();
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { logger: prodLogger } = await import('../utils/logger');
+
+    prodLogger.debug('T', 'd');
+    prodLogger.info('T', 'i');
+    prodLogger.warn('T', 'w');
+
+    expect(debugSpy).not.toHaveBeenCalled();
+    expect(infoSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
 
