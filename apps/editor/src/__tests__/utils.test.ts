@@ -125,4 +125,23 @@ describe('toast', () => {
     expect(containers).toHaveLength(1);
     expect(containers[0].childElementCount).toBe(2);
   });
+
+  it('自定义时长生效，且容器尚有内容时不被销毁', async () => {
+    const toast = await importToast();
+
+    toast('短', 'info', 1000);
+    toast('长', 'info', 5000);
+
+    // 短时长先到期并移除，但容器内仍有第二个 toast，容器保留
+    vi.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(300);
+    const container = document.body.querySelector<HTMLDivElement>('div.fixed');
+    expect(container).not.toBeNull();
+    expect(container!.childElementCount).toBe(1);
+
+    // 第二个到期后容器清空并销毁
+    vi.advanceTimersByTime(4000);
+    vi.advanceTimersByTime(300);
+    expect(document.body.querySelector('div.fixed')).toBeNull();
+  });
 });

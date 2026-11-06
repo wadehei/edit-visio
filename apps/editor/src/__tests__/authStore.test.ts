@@ -186,4 +186,11 @@ describe('authStore', () => {
     expect(store.user).toBeNull();
     expect(store.isLoggedIn).toBe(false);
   });
+
+  it('user 为空时 username 回退为空串', () => {
+    const store = useAuthStore();
+
+    expect(store.user).toBeNull();
+    expect(store.username).toBe('');
+  });
 });

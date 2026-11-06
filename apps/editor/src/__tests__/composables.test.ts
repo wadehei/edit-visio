@@ -340,6 +340,20 @@ describe('useTheme', () => {
 
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
+
+  it('环境不支持 matchMedia 时跳过监听并正常卸载', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => null),
+    );
+
+    const { result, unmount } = mountComposable(() => useTheme());
+
+    expect(result.themeConfig.value.mode).toBe('light');
+    expect(addListenerCalls).toHaveLength(0);
+    expect(() => unmount()).not.toThrow();
+    expect(removeListenerCalls).toHaveLength(0);
+  });
 });
 
 describe('useKeyboardShortcuts', () => {
@@ -566,6 +580,22 @@ describe('useAIAssistant', () => {
     api.recommendations.value[0].action();
     expect(store.page.children).toHaveLength(1);
     expect(store.page.children[0].type).toBe('text');
+  });
+
+  it('行动按钮 / 图片 / 布局建议的动作均可执行', () => {
+    const store = useEditorStore();
+    store.addComponent('text', 'root', 0);
+
+    const api = useAIAssistant();
+    api.analyzePage();
+
+    // 逐条执行建议动作，覆盖按钮、图片与布局模板三个回调
+    api.recommendations.value.forEach((rec) => rec.action());
+
+    const types = store.page.children.map((c) => c.type);
+    expect(types).toContain('button');
+    expect(types).toContain('image');
+    expect(api.showAIPanel.value).toBe(true);
   });
 
   it('applyLayout 按模板添加组件并关闭面板', () => {
