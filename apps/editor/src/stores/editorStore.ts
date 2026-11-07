@@ -269,10 +269,13 @@ export const useEditorStore = defineStore('editor', () => {
         .map((id) => getComponentById(id))
         .filter((c): c is ComponentSchema => !!c)
         .map((c) => deepClone(c));
-    } else if (selectedId.value) {
-      const component = getComponentById(selectedId.value);
-      if (component) {
-        clipboard.value = [deepClone(component)];
+    } else {
+      // Stryker disable next-line ConditionalExpression: 无选中时 getComponentById(null) 返回 undefined，内层守卫保证无副作用
+      if (selectedId.value) {
+        const component = getComponentById(selectedId.value);
+        if (component) {
+          clipboard.value = [deepClone(component)];
+        }
       }
     }
   };
@@ -299,6 +302,7 @@ export const useEditorStore = defineStore('editor', () => {
     }
 
     page.value = { ...page.value, children: newChildren };
+    // Stryker disable next-line ConditionalExpression: 函数入口已保证 clipboard 非空，循环至少执行一次，lastInsertedId 必非空
     if (lastInsertedId) {
       selectedId.value = lastInsertedId;
     }

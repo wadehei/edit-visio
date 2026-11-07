@@ -9,6 +9,11 @@ export interface ApiResponse<T = unknown> {
   message: string;
 }
 
+/** 携带重试标记的请求配置：401 刷新后重放时用于防死循环 */
+interface RetriableRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 if (!API_BASE_URL) {
@@ -60,12 +65,20 @@ request.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const originalRequest = error.config;
+    // error.config 在非 axios 抛出的错误（如自定义 adapter / 事件回调）中可能缺失，
+    // 因此这里必须判空，否则下方读取 originalRequest.url 会抛 TypeError 而非走统一错误分支。
+    const originalRequest = error?.config as RetriableRequestConfig | undefined;
 
     // 401 处理：尝试刷新 token。
     // 刷新/登录/登出接口自身返回 401 时不重试，避免死循环。
-    const isAuthEndpoint = /\/auth\/(refresh|login|logout)\b/.test(originalRequest.url ?? '');
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    // Stryker disable next-line StringLiteral: 空串仅为缺省占位，与任意不匹配鉴权路径的串行为等价
+    const isAuthEndpoint = /\/auth\/(refresh|login|logout)\b/.test(originalRequest?.url ?? '');
+    if (
+      originalRequest &&
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
@@ -103,7 +116,7 @@ request.interceptors.response.use(
     }
 
     // 非 401 错误：提取业务错误信息
-    const message = error.response?.data?.message || error.message || '网络错误';
+    const message = error?.response?.data?.message || error?.message || '网络错误';
     return Promise.reject(new Error(message));
   },
 );

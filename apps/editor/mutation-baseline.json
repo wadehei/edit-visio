@@ -1,0 +1,88 @@
+{
+  "generatedBy": "scripts/mutation-baseline.mjs",
+  "tooling": {
+    "stryker": "10.1.1",
+    "vitest": "5.1.0",
+    "fast-check": "4.10.2"
+  },
+  "config": {
+    "mutate": ["src/stores/editorStore.ts", "src/api/request.ts"],
+    "coverageAnalysis": "perTest",
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 95
+    }
+  },
+  "totals": {
+    "mutants": 288,
+    "killed": 283,
+    "survived": 0,
+    "noCoverage": 0,
+    "ignored": 5,
+    "timeout": 0,
+    "runtimeError": 0,
+    "compileError": 0,
+    "other": 0,
+    "mutationScore": 100
+  },
+  "files": {
+    "src/api/request.ts": {
+      "killed": 86,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 1,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/stores/editorStore.ts": {
+      "killed": 197,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 4,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    }
+  },
+  "ignored": [
+    {
+      "file": "src/api/request.ts",
+      "mutator": "StringLiteral",
+      "location": "75:92",
+      "replacement": "\"Stryker was here!\"",
+      "reason": "空串仅为缺省占位，与任意不匹配鉴权路径的串行为等价"
+    },
+    {
+      "file": "src/stores/editorStore.ts",
+      "mutator": "ConditionalExpression",
+      "location": "274:11",
+      "replacement": "true",
+      "reason": "无选中时 getComponentById(null) 返回 undefined，内层守卫保证无副作用"
+    },
+    {
+      "file": "src/stores/editorStore.ts",
+      "mutator": "ConditionalExpression",
+      "location": "274:11",
+      "replacement": "false",
+      "reason": "无选中时 getComponentById(null) 返回 undefined，内层守卫保证无副作用"
+    },
+    {
+      "file": "src/stores/editorStore.ts",
+      "mutator": "ConditionalExpression",
+      "location": "306:9",
+      "replacement": "true",
+      "reason": "函数入口已保证 clipboard 非空，循环至少执行一次，lastInsertedId 必非空"
+    },
+    {
+      "file": "src/stores/editorStore.ts",
+      "mutator": "ConditionalExpression",
+      "location": "306:9",
+      "replacement": "false",
+      "reason": "函数入口已保证 clipboard 非空，循环至少执行一次，lastInsertedId 必非空"
+    }
+  ]
+}

@@ -27,6 +27,10 @@ describe('editorStore', () => {
       expect(store.history.future).toEqual([]);
     });
 
+    it('should expose a stable store id', () => {
+      expect(useEditorStore().$id).toBe('editor');
+    });
+
     it('should have default canvas settings', () => {
       const store = useEditorStore();
       expect(store.canvasScale).toBe(1);

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import fc from 'fast-check';
 import request from '../api/request';
 import { useAuthStore } from '../stores/authStore';
 
@@ -360,5 +361,114 @@ describe('request 非 401 错误信息提取', () => {
     request.defaults.adapter = networkAdapter('network down');
 
     await expect(request.get('/x')).rejects.toThrow('network down');
+  });
+});
+
+describe('request 响应拦截器在缺失 config 的错误对象下的健壮性', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    planned = [];
+    seenAuthHeaders = [];
+    request.defaults.adapter = planAdapter;
+  });
+
+  it('非 401 且错误对象缺少 config 时回退到 error.message，而非抛 TypeError', async () => {
+    request.defaults.adapter = () => Promise.reject(new Error('boom-without-config'));
+
+    await expect(request.get('/x')).rejects.toThrow('boom-without-config');
+  });
+
+  it('401 但错误对象缺少 config 时不进入刷新分支，走统一错误提取', async () => {
+    const authStore = useAuthStore();
+    const refreshSpy = vi.spyOn(authStore, 'doRefreshToken');
+    request.defaults.adapter = () => {
+      const error = new Error('unauthorized-without-config') as Error & { response?: unknown };
+      error.response = { status: 401, data: { message: 'unauthorized-without-config' } };
+      return Promise.reject(error);
+    };
+
+    await expect(request.get('/x')).rejects.toThrow('unauthorized-without-config');
+    expect(refreshSpy).not.toHaveBeenCalled();
+  });
+
+  it('拒绝值为 nullish 时回退到 网络错误，而非抛 TypeError', async () => {
+    // 故意以 nullish 作为拒绝值，用于验证拦截器对缺失 error 的空值防御
+    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+    request.defaults.adapter = () => Promise.reject(null);
+
+    await expect(request.get('/x')).rejects.toThrow('网络错误');
+  });
+});
+
+describe('request 401 刷新并发的属性不变量', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * 模型：N 个并发请求，每个请求的首次尝试都返回 401，重放后返回 200。
+   * 不变量（对任意 N）：
+   *   1) 刷新恰好触发一次（并发去重）；
+   *   2) 所有请求最终都成功完成，无悬挂；
+   *   3) 每个请求的重放都携带刷新后的新 token。
+   */
+  it('任意并发数下：刷新恰好一次，全部请求带新 token 且全部完成', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 1, max: 8 }), async (n) => {
+        setActivePinia(createPinia());
+        const authStore = useAuthStore();
+        authStore.accessToken = 'stale-token';
+        const newToken = 'refreshed-token';
+        // 真实 doRefreshToken 会同步更新内存 token；mock 需保持同一行为，
+        // 否则请求拦截器会用旧 token 覆盖重放的 Authorization 头。
+        const refreshSpy = vi.spyOn(authStore, 'doRefreshToken').mockImplementation(() => {
+          authStore.accessToken = newToken;
+          return Promise.resolve(newToken);
+        });
+
+        const attempts = new Map<string, number>();
+        const authHeaders: Array<string | undefined> = [];
+
+        request.defaults.adapter = (config) => {
+          authHeaders.push(config.headers?.Authorization as string | undefined);
+          const url = config.url ?? '';
+          const attempt = (attempts.get(url) ?? 0) + 1;
+          attempts.set(url, attempt);
+
+          if (attempt === 1) {
+            const error = new Error('unauthorized') as Error & {
+              config: InternalAxiosRequestConfig;
+              response: AxiosResponse;
+            };
+            error.config = config;
+            error.response = {
+              data: { code: 401, data: null, message: 'unauthorized' },
+              status: 401,
+              statusText: '401',
+              headers: {},
+              config,
+            };
+            return Promise.reject(error);
+          }
+
+          return Promise.resolve({
+            data: { code: 0, data: url, message: 'ok' },
+            status: 200,
+            statusText: '200',
+            headers: {},
+            config,
+          });
+        };
+
+        const results = await Promise.all(
+          Array.from({ length: n }, (_, i) => request.get(`/req-${i}`)),
+        );
+
+        expect(results).toHaveLength(n);
+        expect(refreshSpy).toHaveBeenCalledTimes(1);
+        expect(authHeaders.filter((h) => h === `Bearer ${newToken}`)).toHaveLength(n);
+      }),
+      { numRuns: 25 },
+    );
   });
 });

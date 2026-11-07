@@ -12,7 +12,9 @@
     "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:shuffle": "vitest run --sequence.shuffle",
     "test:mutation": "stryker run",
+    "test:mutation:baseline": "node scripts/mutation-baseline.mjs",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {

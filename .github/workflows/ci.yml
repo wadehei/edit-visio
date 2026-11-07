@@ -48,5 +48,25 @@ jobs:
       - name: 变异测试
         run: pnpm test:mutation
 
+      # 变异报告落库：stryker 的逐变异体明细是"测试是否真的在测"的唯一真源，
+      # 需在门禁失败时同样保留，供事后核查存活/等价变异。
+      - name: 上传变异测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: |
+            apps/editor/coverage/mutation/mutation.json
+            apps/editor/coverage/mutation/mutation.html
+          retention-days: 7
+
+      # 基线漂移门禁：由同一份变异报告再生精简基线，若与仓库内已提交的
+      # apps/editor/mutation-baseline.json 不一致则失败。这样任何对变异分或忽略规则的
+      # 改动都必须显式更新基线并在 review 中可见，防止门槛被静默下调。
+      - name: 校验变异基线未漂移
+        run: |
+          pnpm --filter @page-builder/editor test:mutation:baseline
+          git diff --exit-code -- apps/editor/mutation-baseline.json
+
       - name: 构建
         run: pnpm build
