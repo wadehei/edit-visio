@@ -6,8 +6,25 @@
     "fast-check": "4.10.2"
   },
   "config": {
-    "mutate": ["src/stores/editorStore.ts", "src/api/request.ts"],
+    "mutate": [
+      "src/stores/editorStore.ts",
+      "src/stores/authStore.ts",
+      "src/api/request.ts",
+      "src/registry/componentRegistry.ts",
+      "src/utils/logger.ts",
+      "src/utils/toast.ts",
+      "src/utils/errorHandler.ts",
+      "src/composables/useAnimation.ts",
+      "src/composables/useDevicePreview.ts",
+      "src/composables/useAlignmentGuides.ts",
+      "src/composables/useTheme.ts",
+      "src/composables/useAutoSave.ts",
+      "src/composables/useProjectManager.ts",
+      "src/composables/useKeyboardShortcuts.ts",
+      "src/composables/useAIAssistant.ts"
+    ],
     "coverageAnalysis": "perTest",
+    "ignoreStatic": true,
     "thresholds": {
       "high": 80,
       "low": 60,
@@ -15,16 +32,16 @@
     }
   },
   "totals": {
-    "mutants": 288,
-    "killed": 283,
+    "mutants": 1482,
+    "killed": 1340,
     "survived": 0,
     "noCoverage": 0,
-    "ignored": 5,
+    "ignored": 135,
     "timeout": 0,
-    "runtimeError": 0,
+    "runtimeError": 7,
     "compileError": 0,
     "other": 0,
-    "mutationScore": 100
+    "mutationScore": 99.48
   },
   "files": {
     "src/api/request.ts": {
@@ -37,11 +54,141 @@
       "compileError": 0,
       "other": 0
     },
-    "src/stores/editorStore.ts": {
-      "killed": 197,
+    "src/composables/useAIAssistant.ts": {
+      "killed": 134,
       "survived": 0,
       "noCoverage": 0,
-      "ignored": 4,
+      "ignored": 42,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/composables/useAlignmentGuides.ts": {
+      "killed": 87,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 0,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/composables/useAnimation.ts": {
+      "killed": 36,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 38,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/composables/useAutoSave.ts": {
+      "killed": 76,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 1,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/composables/useDevicePreview.ts": {
+      "killed": 16,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 17,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/composables/useKeyboardShortcuts.ts": {
+      "killed": 177,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 2,
+      "timeout": 0,
+      "runtimeError": 7,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/composables/useProjectManager.ts": {
+      "killed": 326,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 7,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/composables/useTheme.ts": {
+      "killed": 64,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 5,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/registry/componentRegistry.ts": {
+      "killed": 13,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 17,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/stores/authStore.ts": {
+      "killed": 42,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 0,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/stores/editorStore.ts": {
+      "killed": 196,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 5,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/utils/errorHandler.ts": {
+      "killed": 30,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 0,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/utils/logger.ts": {
+      "killed": 20,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 0,
+      "timeout": 0,
+      "runtimeError": 0,
+      "compileError": 0,
+      "other": 0
+    },
+    "src/utils/toast.ts": {
+      "killed": 37,
+      "survived": 0,
+      "noCoverage": 0,
+      "ignored": 0,
       "timeout": 0,
       "runtimeError": 0,
       "compileError": 0,
@@ -55,6 +202,916 @@
       "location": "75:92",
       "replacement": "\"Stryker was here!\"",
       "reason": "空串仅为缺省占位，与任意不匹配鉴权路径的串行为等价"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ObjectLiteral",
+      "location": "15:23",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "16:9",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "16:10",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "16:23",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "16:33",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "16:43",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "17:8",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "17:9",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "17:17",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "17:25",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "17:33",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "18:12",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "18:13",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "18:21",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "18:29",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "18:37",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "22:31",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ObjectLiteral",
+      "location": "23:3",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "24:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "25:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "26:17",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "26:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "26:26",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "26:35",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "26:43",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ObjectLiteral",
+      "location": "28:3",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "29:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "30:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "31:17",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "31:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "31:26",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "31:34",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "31:42",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ObjectLiteral",
+      "location": "33:3",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "34:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "35:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "36:17",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "36:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "36:26",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "36:35",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "36:43",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAIAssistant.ts",
+      "mutator": "StringLiteral",
+      "location": "36:54",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ObjectLiteral",
+      "location": "27:64",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "28:9",
+      "replacement": "\"Stryker was here!\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "29:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "30:13",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "31:15",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "32:15",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "33:16",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "34:14",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "35:16",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "36:16",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "37:17",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "38:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "39:13",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "40:13",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "41:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "44:36",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ObjectLiteral",
+      "location": "45:3",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "46:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "47:17",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "47:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "47:28",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "47:40",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "47:54",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "47:68",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ObjectLiteral",
+      "location": "49:3",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "50:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "51:17",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "51:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "51:31",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "51:46",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "51:61",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ObjectLiteral",
+      "location": "53:3",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "54:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "ArrayDeclaration",
+      "location": "55:17",
+      "replacement": "[]",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "55:18",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "55:28",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "55:40",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAnimation.ts",
+      "mutator": "StringLiteral",
+      "location": "55:52",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useAutoSave.ts",
+      "mutator": "StringLiteral",
+      "location": "12:21",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "ObjectLiteral",
+      "location": "13:58",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "ObjectLiteral",
+      "location": "14:11",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "15:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "16:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "19:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "ObjectLiteral",
+      "location": "21:11",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "22:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "23:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "26:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "ObjectLiteral",
+      "location": "28:12",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "29:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "30:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "33:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "ObjectLiteral",
+      "location": "35:11",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "36:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "37:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useDevicePreview.ts",
+      "mutator": "StringLiteral",
+      "location": "40:11",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useKeyboardShortcuts.ts",
+      "mutator": "ConditionalExpression",
+      "location": "102:9",
+      "replacement": "true",
+      "reason": "等价变异。handleDuplicate 唯一的调用点（第 94 行 Ctrl+D 分支）已要求 selectedId.value 为真，故进入此函数时 !selectedId.value 恒为 false、该早返回不可达，删除后行为完全一致。"
+    },
+    {
+      "file": "src/composables/useKeyboardShortcuts.ts",
+      "mutator": "ConditionalExpression",
+      "location": "102:9",
+      "replacement": "false",
+      "reason": "等价变异。handleDuplicate 唯一的调用点（第 94 行 Ctrl+D 分支）已要求 selectedId.value 为真，故进入此函数时 !selectedId.value 恒为 false、该早返回不可达，删除后行为完全一致。"
+    },
+    {
+      "file": "src/composables/useProjectManager.ts",
+      "mutator": "StringLiteral",
+      "location": "20:22",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useProjectManager.ts",
+      "mutator": "StringLiteral",
+      "location": "21:29",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useProjectManager.ts",
+      "mutator": "UpdateOperator",
+      "location": "211:25",
+      "replacement": "--pageRequestVersion",
+      "reason": "等价变异。pageRequestVersion 为闭包私有计数器，仅用于与本次捕获的 thisVersion 比较；++ 或 -- 都保证自增/自减序列严格单调且「最新请求生效」，无任何可观测行为差异。"
+    },
+    {
+      "file": "src/composables/useProjectManager.ts",
+      "mutator": "ConditionalExpression",
+      "location": "315:23",
+      "replacement": "true",
+      "reason": "等价变异。此处 p 必为命中项目且 pageId 已存在于 p.pages（index>-1），故 p.pages.length>=1；当 length===1 时，原文走 '' 分支，而 >1 改为 true/>=1 后会经 filter 过滤为空并回退到 ''，结果完全相同，无可观测差异。"
+    },
+    {
+      "file": "src/composables/useProjectManager.ts",
+      "mutator": "ConditionalExpression",
+      "location": "315:23",
+      "replacement": "false",
+      "reason": "等价变异。此处 p 必为命中项目且 pageId 已存在于 p.pages（index>-1），故 p.pages.length>=1；当 length===1 时，原文走 '' 分支，而 >1 改为 true/>=1 后会经 filter 过滤为空并回退到 ''，结果完全相同，无可观测差异。"
+    },
+    {
+      "file": "src/composables/useProjectManager.ts",
+      "mutator": "EqualityOperator",
+      "location": "315:23",
+      "replacement": "p.pages.length >= 1",
+      "reason": "等价变异。此处 p 必为命中项目且 pageId 已存在于 p.pages（index>-1），故 p.pages.length>=1；当 length===1 时，原文走 '' 分支，而 >1 改为 true/>=1 后会经 filter 过滤为空并回退到 ''，结果完全相同，无可观测差异。"
+    },
+    {
+      "file": "src/composables/useProjectManager.ts",
+      "mutator": "EqualityOperator",
+      "location": "315:23",
+      "replacement": "p.pages.length <= 1",
+      "reason": "等价变异。此处 p 必为命中项目且 pageId 已存在于 p.pages（index>-1），故 p.pages.length>=1；当 length===1 时，原文走 '' 分支，而 >1 改为 true/>=1 后会经 filter 过滤为空并回退到 ''，结果完全相同，无可观测差异。"
+    },
+    {
+      "file": "src/composables/useTheme.ts",
+      "mutator": "StringLiteral",
+      "location": "11:21",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/composables/useTheme.ts",
+      "mutator": "ConditionalExpression",
+      "location": "71:5",
+      "replacement": "true",
+      "reason": "浏览器/jsdom 中 window 恒有定义（typeof window === 'object'），SSR 守卫的条件恒为真、字符串比较 'undefined' 恒不成立，两处变异在当前运行环境语义等价，无法通过测试区分"
+    },
+    {
+      "file": "src/composables/useTheme.ts",
+      "mutator": "ConditionalExpression",
+      "location": "71:5",
+      "replacement": "false",
+      "reason": "浏览器/jsdom 中 window 恒有定义（typeof window === 'object'），SSR 守卫的条件恒为真、字符串比较 'undefined' 恒不成立，两处变异在当前运行环境语义等价，无法通过测试区分"
+    },
+    {
+      "file": "src/composables/useTheme.ts",
+      "mutator": "StringLiteral",
+      "location": "71:23",
+      "replacement": "\"\"",
+      "reason": "浏览器/jsdom 中 window 恒有定义（typeof window === 'object'），SSR 守卫的条件恒为真、字符串比较 'undefined' 恒不成立，两处变异在当前运行环境语义等价，无法通过测试区分"
+    },
+    {
+      "file": "src/composables/useTheme.ts",
+      "mutator": "StringLiteral",
+      "location": "71:55",
+      "replacement": "\"\"",
+      "reason": "浏览器/jsdom 中 window 恒有定义（typeof window === 'object'），SSR 守卫的条件恒为真、字符串比较 'undefined' 恒不成立，两处变异在当前运行环境语义等价，无法通过测试区分"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "49:57",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "50:9",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "51:11",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "52:10",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "53:14",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "54:12",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "55:11",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "56:9",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "57:10",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "58:13",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "59:10",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "60:10",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "61:10",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "62:8",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "63:13",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "64:14",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/registry/componentRegistry.ts",
+      "mutator": "ObjectLiteral",
+      "location": "65:13",
+      "replacement": "{}",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
+    },
+    {
+      "file": "src/stores/editorStore.ts",
+      "mutator": "StringLiteral",
+      "location": "24:43",
+      "replacement": "\"\"",
+      "reason": "Static mutant (and \"ignoreStatic\" was enabled)"
     },
     {
       "file": "src/stores/editorStore.ts",

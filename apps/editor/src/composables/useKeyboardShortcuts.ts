@@ -98,6 +98,7 @@ export function useKeyboardShortcuts() {
   };
 
   const handleDuplicate = () => {
+    // Stryker disable next-line ConditionalExpression: 等价变异。handleDuplicate 唯一的调用点（第 94 行 Ctrl+D 分支）已要求 selectedId.value 为真，故进入此函数时 !selectedId.value 恒为 false、该早返回不可达，删除后行为完全一致。
     if (!selectedId.value) return;
 
     const component = findComponentInTree(page.value.children, selectedId.value);

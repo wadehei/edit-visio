@@ -207,6 +207,7 @@ export function useProjectManager() {
     saveCurrentProjectId(id);
 
     // 递增版本号，使之前的未完成任务的响应被丢弃
+    // Stryker disable next-line UpdateOperator: 等价变异。pageRequestVersion 为闭包私有计数器，仅用于与本次捕获的 thisVersion 比较；++ 或 -- 都保证自增/自减序列严格单调且「最新请求生效」，无任何可观测行为差异。
     const thisVersion = ++pageRequestVersion;
 
     // 异步加载该项目下的页面列表
@@ -310,7 +311,8 @@ export function useProjectManager() {
                 pages: p.pages.filter((pg) => pg.id !== pageId),
                 currentPageId:
                   p.currentPageId === pageId
-                    ? p.pages.length > 1
+                    ? // Stryker disable next-line ConditionalExpression,EqualityOperator: 等价变异。此处 p 必为命中项目且 pageId 已存在于 p.pages（index>-1），故 p.pages.length>=1；当 length===1 时，原文走 '' 分支，而 >1 改为 true/>=1 后会经 filter 过滤为空并回退到 ''，结果完全相同，无可观测差异。
+                      p.pages.length > 1
                       ? p.pages.filter((pg) => pg.id !== pageId)[0]?.id || ''
                       : ''
                     : p.currentPageId,

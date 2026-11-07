@@ -270,6 +270,13 @@ describe('request 拦截器', () => {
 });
 
 describe('request 实例默认配置', () => {
+  // 这些用例会 vi.resetModules() 后重新 import，从而在「测试执行期」内重放模块加载代码；
+  // 借此对模块级配置（baseURL/timeout/withCredentials）与拦截器注册做断言。
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
   it('默认超时 15s 且携带凭证', () => {
     expect(request.defaults.timeout).toBe(15_000);
     expect(request.defaults.withCredentials).toBe(true);
@@ -283,6 +290,8 @@ describe('request 实例默认配置', () => {
     const mod = await import('../api/request');
 
     expect(mod.default.defaults.baseURL).toBe('https://api.example.com');
+    expect(mod.default.defaults.timeout).toBe(15_000);
+    expect(mod.default.defaults.withCredentials).toBe(true);
     expect(loggerError).not.toHaveBeenCalled();
   });
 
@@ -294,7 +303,89 @@ describe('request 实例默认配置', () => {
     const mod = await import('../api/request');
 
     expect(mod.default.defaults.baseURL).toBe('/api/v1');
+    expect(mod.default.defaults.withCredentials).toBe(true);
     expect(loggerError).toHaveBeenCalledWith('API', expect.stringContaining('VITE_API_BASE_URL'));
+  });
+
+  it('重新导入实例在模块加载期注册请求/响应拦截器各一个', async () => {
+    vi.resetModules();
+
+    const mod = await import('../api/request');
+
+    const requestHandlers = (mod.default.interceptors.request as unknown as { handlers: unknown[] })
+      .handlers;
+    const responseHandlers = (
+      mod.default.interceptors.response as unknown as { handlers: unknown[] }
+    ).handlers;
+    expect(requestHandlers).toHaveLength(1);
+    expect(responseHandlers).toHaveLength(1);
+  });
+
+  it('重新导入实例的请求错误拦截器将非 Error 值归一化后 reject', async () => {
+    vi.resetModules();
+
+    const mod = await import('../api/request');
+    const handlers = (
+      mod.default.interceptors.request as unknown as {
+        handlers: Array<{ rejected?: (error: unknown) => unknown }>;
+      }
+    ).handlers;
+    const rejected = handlers[0].rejected;
+    expect(rejected).toBeTypeOf('function');
+
+    await expect(Promise.resolve(rejected!('plain-failure'))).rejects.toThrow('plain-failure');
+  });
+
+  it('重新导入实例：并发 401 仅刷新一次并复用新 token', async () => {
+    setActivePinia(createPinia());
+    vi.resetModules();
+
+    const mod = await import('../api/request');
+
+    // 重新导入模块时 authStore 亦被重载，但同一 pinia 下按 id 复用同一 store 实例，
+    // 因此对其 doRefreshToken 打桩对 mod.default 的响应拦截器同样生效。
+    const authStore = useAuthStore();
+    let resolveRefresh: (token: string) => void = () => {};
+    const refreshSpy = vi.spyOn(authStore, 'doRefreshToken').mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+
+    const localPlans: PlannedResponse[] = [
+      { status: 401, payload: { code: 401, message: 'unauthorized' } },
+      { status: 401, payload: { code: 401, message: 'unauthorized' } },
+      { status: 200, payload: { code: 0, data: 'a', message: 'ok' } },
+      { status: 200, payload: { code: 0, data: 'b', message: 'ok' } },
+    ];
+    const localSeen: Array<string | undefined> = [];
+    mod.default.defaults.adapter = (config) => {
+      localSeen.push(config.headers?.Authorization as string | undefined);
+      const plan = localPlans.shift() ?? DEFAULT_OK;
+      if (plan.status >= 400) {
+        const error = new Error(`Request failed with status code ${plan.status}`) as Error & {
+          config: InternalAxiosRequestConfig;
+          response: AxiosResponse;
+        };
+        error.config = config;
+        error.response = makeResponse(config, plan);
+        return Promise.reject(error);
+      }
+      return Promise.resolve(makeResponse(config, plan));
+    };
+
+    const first = mod.default.get('/a');
+    const second = mod.default.get('/b');
+
+    await vi.waitFor(() => expect(refreshSpy).toHaveBeenCalledTimes(1));
+    resolveRefresh('shared-token');
+
+    const [r1, r2] = await Promise.all([first, second]);
+
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    expect([r1.data.data, r2.data.data].sort()).toEqual(['a', 'b']);
+    expect(localSeen.filter((h) => h === 'Bearer shared-token')).toHaveLength(2);
   });
 });
 

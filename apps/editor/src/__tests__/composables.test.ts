@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi, type Mock } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
@@ -10,6 +10,7 @@ import { useTheme } from '../composables/useTheme';
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
 import { useAIAssistant } from '../composables/useAIAssistant';
 import { useEditorStore } from '../stores/editorStore';
+import { logger } from '../utils/logger';
 import type { ComponentSchema } from '@page-builder/shared';
 
 /** 在组件实例上下文中调用组合式函数，以便 onMounted/onUnmounted 生效 */
@@ -55,6 +56,17 @@ describe('useAnimation', () => {
     const api = useAnimation();
     expect(api.currentAnimation.value.type).toBe('none');
     expect(api.animationStyle.value).toEqual({});
+  });
+
+  it('初始 currentAnimation 为完整默认配置', () => {
+    const api = useAnimation();
+    expect(api.currentAnimation.value).toEqual({
+      type: 'none',
+      duration: 500,
+      delay: 0,
+      easing: 'ease-out',
+      iteration: 'once',
+    });
   });
 
   it('设定动画后应生成带时长/延迟/次数的 animation 值', () => {
@@ -201,12 +213,101 @@ describe('useAlignmentGuides', () => {
     api.clearGuides();
     expect(api.guides.value).toEqual([]);
   });
+
+  it('基于非零画布偏移与非对称矩形计算精确辅助线位置', () => {
+    const canvas = { left: 10, top: 20 } as DOMRect;
+    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
+    makeElement('other', { left: 100, top: 200, right: 150, bottom: 250 });
+
+    const api = useAlignmentGuides();
+    api.detectAlignment(
+      makeComponent('drag'),
+      [makeComponent('drag'), makeComponent('other')],
+      canvas,
+    );
+
+    const vertical = api.guides.value
+      .filter((g) => g.type === 'vertical')
+      .map((g) => g.position)
+      .sort((a, b) => a - b);
+    const horizontal = api.guides.value
+      .filter((g) => g.type === 'horizontal')
+      .map((g) => g.position)
+      .sort((a, b) => a - b);
+
+    // left/right/centerX = 100-10 / 150-10 / (100+150)/2-10
+    expect(vertical).toEqual([90, 115, 140]);
+    // top/bottom/centerY = 200-20 / 250-20 / (200+250)/2-20
+    expect(horizontal).toEqual([180, 205, 230]);
+  });
+
+  it('多个组件对齐同一位置时累加组件 id 而非覆盖', () => {
+    const canvas = { left: 10, top: 20 } as DOMRect;
+    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
+    makeElement('o1', { left: 100, top: 200, right: 150, bottom: 250 });
+    makeElement('o2', { left: 100, top: 200, right: 150, bottom: 250 });
+
+    const api = useAlignmentGuides();
+    api.detectAlignment(
+      makeComponent('drag'),
+      [makeComponent('drag'), makeComponent('o1'), makeComponent('o2')],
+      canvas,
+    );
+
+    const vertical = api.guides.value.find((g) => g.type === 'vertical' && g.position === 90);
+    expect(vertical?.components).toEqual(['drag', 'o1', 'o2']);
+
+    const horizontal = api.guides.value.find((g) => g.type === 'horizontal' && g.position === 180);
+    expect(horizontal?.components).toEqual(['drag', 'o1', 'o2']);
+  });
+
+  it('存在无对应 DOM 的组件时跳过且不产生辅助线', () => {
+    const canvas = { left: 10, top: 20 } as DOMRect;
+    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
+
+    const api = useAlignmentGuides();
+    api.detectAlignment(
+      makeComponent('drag'),
+      [makeComponent('drag'), makeComponent('ghost')],
+      canvas,
+    );
+
+    expect(api.guides.value).toEqual([]);
+  });
+
+  it('差值恰好等于阈值时不生成辅助线', () => {
+    const canvas = { left: 10, top: 20 } as DOMRect;
+    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
+    makeElement('other', { left: 105, top: 205, right: 155, bottom: 255 });
+
+    const api = useAlignmentGuides();
+    api.detectAlignment(
+      makeComponent('drag'),
+      [makeComponent('drag'), makeComponent('other')],
+      canvas,
+    );
+
+    expect(api.guides.value).toEqual([]);
+  });
+
+  it('toggleGuides 重新开启时保留已有辅助线', () => {
+    const api = useAlignmentGuides();
+    api.toggleGuides();
+    expect(api.showGuides.value).toBe(false);
+
+    api.guides.value = [{ type: 'vertical', position: 1, components: ['a'] }];
+    api.toggleGuides();
+
+    expect(api.showGuides.value).toBe(true);
+    expect(api.guides.value).toHaveLength(1);
+  });
 });
 
 describe('useTheme', () => {
   let prefersDark = false;
   let addListenerCalls: Array<{ type: string; cb: (e: MediaQueryListEvent) => void }> = [];
   let removeListenerCalls: Array<{ type: string; cb: (e: MediaQueryListEvent) => void }> = [];
+  let matchMediaMock: Mock;
 
   function makeMediaQueryList() {
     return {
@@ -233,10 +334,8 @@ describe('useTheme', () => {
     prefersDark = false;
     addListenerCalls = [];
     removeListenerCalls = [];
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(() => makeMediaQueryList()),
-    );
+    matchMediaMock = vi.fn(() => makeMediaQueryList());
+    vi.stubGlobal('matchMedia', matchMediaMock);
   });
 
   afterEach(() => {
@@ -354,6 +453,78 @@ describe('useTheme', () => {
     expect(() => unmount()).not.toThrow();
     expect(removeListenerCalls).toHaveLength(0);
   });
+
+  it('system 模式下通过深色偏好媒体查询判断主题', () => {
+    const { result } = mountComposable(() => useTheme());
+    // 清空 setup 阶段的调用，确保断言只针对 isDark 内部的 matchMedia 调用
+    matchMediaMock.mockClear();
+    result.setThemeMode('system');
+
+    expect(result.isDark.value).toBe(false);
+    expect(matchMediaMock).toHaveBeenCalledWith('(prefers-color-scheme: dark)');
+  });
+
+  it('浅色主题下根元素不包含 dark 类', () => {
+    const { result } = mountComposable(() => useTheme());
+    expect(result.isDark.value).toBe(false);
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
+
+  it('从深色切换到浅色时移除 dark 类', () => {
+    const { result } = mountComposable(() => useTheme());
+    result.setThemeMode('dark');
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+    result.setThemeMode('light');
+    expect(result.isDark.value).toBe(false);
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
+
+  it('读取本地配置异常时以精确参数记录错误', () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('read failure');
+    });
+
+    mountComposable(() => useTheme());
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Theme',
+      'Failed to load theme config',
+      expect.any(Error),
+    );
+    getItemSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('保存配置异常时以精确参数记录错误', () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const { result } = mountComposable(() => useTheme());
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('write failure');
+    });
+
+    result.setPrimaryColor('#123456');
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Theme',
+      'Failed to save theme config',
+      expect.any(Error),
+    );
+    setItemSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('非 system 模式下系统主题变化不覆盖手动设置的主色变量', () => {
+    const { result } = mountComposable(() => useTheme());
+    document.documentElement.style.setProperty('--primary-color', '#123456');
+
+    prefersDark = true;
+    addListenerCalls[0].cb({ matches: true } as MediaQueryListEvent);
+
+    expect(result.themeConfig.value.mode).toBe('light');
+    expect(document.documentElement.style.getPropertyValue('--primary-color')).toBe('#123456');
+  });
 });
 
 describe('useKeyboardShortcuts', () => {
@@ -384,6 +555,13 @@ describe('useKeyboardShortcuts', () => {
 
   function press(init: KeyboardEventInit, target: EventTarget = window) {
     target.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, ...init }));
+  }
+
+  /** 派发可取消的按键事件并返回事件对象，用于断言 preventDefault 是否生效 */
+  function pressEvent(init: KeyboardEventInit, target: EventTarget = window): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    return event;
   }
 
   it('Ctrl+Z 撤销、Ctrl+Y 重做', () => {
@@ -518,6 +696,279 @@ describe('useKeyboardShortcuts', () => {
     press({ key: 'z', ctrlKey: true });
     expect(store.page.children).toHaveLength(1);
   });
+
+  it('撤销/重做/粘贴/方向键/保存均阻止默认行为', () => {
+    mountComposable(() => useKeyboardShortcuts());
+
+    expect(pressEvent({ key: 'z', ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 'y', ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 'z', ctrlKey: true, shiftKey: true }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 'v', ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 'ArrowUp' }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 'ArrowDown' }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 's', ctrlKey: true }).defaultPrevented).toBe(true);
+  });
+
+  it('复制/删除/复制组件均阻止默认行为', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    expect(pressEvent({ key: 'c', ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 'Delete' }).defaultPrevented).toBe(true);
+    expect(pressEvent({ key: 'd', ctrlKey: true }).defaultPrevented).toBe(true);
+  });
+
+  it('TEXTAREA 与 contentEditable 元素内不响应快捷键', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+
+    const editable = document.createElement('div');
+    Object.defineProperty(editable, 'isContentEditable', { value: true, configurable: true });
+    document.body.appendChild(editable);
+
+    press({ key: 'z', ctrlKey: true }, textarea);
+    press({ key: 'z', ctrlKey: true }, editable);
+
+    expect(store.page.children).toHaveLength(1);
+  });
+
+  it('方向键在首尾边界不越界', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+
+    store.addComponent('text', 'root', 0);
+    const first = store.page.children[0];
+    store.addComponent('button', 'root', 1);
+    const second = store.page.children[1];
+
+    store.setSelectedId(first.id);
+    press({ key: 'ArrowUp' });
+    expect(store.selectedId).toBe(first.id);
+
+    store.setSelectedId(second.id);
+    press({ key: 'ArrowDown' });
+    expect(store.selectedId).toBe(second.id);
+
+    press({ key: 'ArrowUp' });
+    expect(store.selectedId).toBe(first.id);
+  });
+
+  it('选中项不在列表中时方向键不改变选中', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    store.setSelectedId('ghost');
+
+    press({ key: 'ArrowDown' });
+    expect(store.selectedId).toBe('ghost');
+  });
+
+  it('普通按键不触发任何快捷键副作用', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    press({ key: 'c', ctrlKey: true }); // 填充剪贴板以便检测误触发的粘贴
+    expect(store.clipboard).toHaveLength(1);
+
+    const childrenBefore = store.page.children.length;
+    const selectedBefore = store.selectedId;
+    const ev = pressEvent({ key: 'x' });
+
+    expect(store.page.children).toHaveLength(childrenBefore);
+    expect(store.selectedId).toBe(selectedBefore);
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(ev.defaultPrevented).toBe(false);
+  });
+
+  it('未按重做快捷键时不触发重做', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    press({ key: 'z', ctrlKey: true });
+    expect(store.page.children).toHaveLength(0);
+
+    press({ key: 'x' });
+    expect(store.page.children).toHaveLength(0);
+  });
+
+  it('无选中时 Ctrl+C 不调用复制', () => {
+    const store = useEditorStore();
+    const copySpy = vi.spyOn(store, 'copyComponent');
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    store.setSelectedId(null);
+
+    press({ key: 'c', ctrlKey: true });
+    expect(copySpy).not.toHaveBeenCalled();
+  });
+
+  it('无选中时 Delete 不调用删除', () => {
+    const store = useEditorStore();
+    const deleteSpy = vi.spyOn(store, 'deleteComponent');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    store.setSelectedId(null);
+
+    press({ key: 'Delete' });
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  it('Delete 以选中 id 调用 deleteComponent 并校验确认文案', () => {
+    const store = useEditorStore();
+    const deleteSpy = vi.spyOn(store, 'deleteComponent');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    const id = store.page.children[0].id;
+
+    press({ key: 'Delete' });
+
+    expect(confirmSpy).toHaveBeenCalledWith('确定要删除这个组件吗？');
+    expect(deleteSpy).toHaveBeenCalledWith(id);
+  });
+
+  it('Ctrl+D 将复制件插入到原组件之后', () => {
+    const store = useEditorStore();
+    const insertSpy = vi.spyOn(store, 'insertComponentTree');
+    mountComposable(() => useKeyboardShortcuts());
+
+    store.addComponent('text', 'root', 0);
+    const first = store.page.children[0];
+    store.addComponent('button', 'root', 1);
+    store.addComponent('image', 'root', 2);
+    store.setSelectedId(first.id);
+
+    press({ key: 'd', ctrlKey: true });
+
+    expect(insertSpy).toHaveBeenCalledTimes(1);
+    const [inserted, parentId, index] = insertSpy.mock.calls[0];
+    expect(parentId).toBe('root');
+    expect(index).toBe(1);
+    expect(inserted.id).not.toBe(first.id);
+    expect(inserted.type).toBe('text');
+    expect(store.page.children.map((c) => c.type)).toEqual(['text', 'text', 'button', 'image']);
+  });
+
+  it('缺少 Ctrl/Cmd 修饰键时不触发撤销', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+
+    press({ key: 'z' });
+    expect(store.page.children).toHaveLength(1);
+  });
+
+  it('缺少 Ctrl/Cmd 修饰键时不触发重做', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    press({ key: 'z', ctrlKey: true });
+    expect(store.page.children).toHaveLength(0);
+
+    press({ key: 'y' });
+    expect(store.page.children).toHaveLength(0);
+  });
+
+  it('Ctrl/Cmd + Shift + 非 Z/Y 键不触发重做', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    press({ key: 'z', ctrlKey: true });
+    expect(store.page.children).toHaveLength(0);
+
+    press({ key: 'a', ctrlKey: true, shiftKey: true });
+    expect(store.page.children).toHaveLength(0);
+  });
+
+  it('缺少 Ctrl/Cmd 修饰键时不触发复制', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+
+    press({ key: 'c' });
+    expect(store.clipboard).toHaveLength(0);
+  });
+
+  it('缺少 Ctrl/Cmd 修饰键时不触发粘贴', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    press({ key: 'c', ctrlKey: true });
+    expect(store.clipboard).toHaveLength(1);
+
+    press({ key: 'v' });
+    expect(store.page.children).toHaveLength(1);
+  });
+
+  it('缺少 Ctrl/Cmd 修饰键时不触发保存与复制组件', () => {
+    const store = useEditorStore();
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    clickSpy.mockClear();
+
+    press({ key: 's' });
+    press({ key: 'd' });
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(store.page.children).toHaveLength(1);
+  });
+
+  it('Ctrl/Cmd + 非 C 键不触发复制', () => {
+    const store = useEditorStore();
+    const copySpy = vi.spyOn(store, 'copyComponent');
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+
+    press({ key: 'v', ctrlKey: true });
+    expect(copySpy).not.toHaveBeenCalled();
+  });
+
+  it('Backspace 经确认后删除选中组件', () => {
+    const store = useEditorStore();
+    const deleteSpy = vi.spyOn(store, 'deleteComponent');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    const id = store.page.children[0].id;
+
+    press({ key: 'Backspace' });
+
+    expect(deleteSpy).toHaveBeenCalledWith(id);
+  });
+
+  it('Ctrl+D 按选中组件在列表中的真实索引插入', () => {
+    const store = useEditorStore();
+    const insertSpy = vi.spyOn(store, 'insertComponentTree');
+    mountComposable(() => useKeyboardShortcuts());
+
+    store.addComponent('text', 'root', 0);
+    store.addComponent('button', 'root', 1);
+    store.addComponent('image', 'root', 2);
+
+    press({ key: 'd', ctrlKey: true });
+
+    expect(insertSpy).toHaveBeenCalledTimes(1);
+    expect(insertSpy.mock.calls[0][2]).toBe(3);
+  });
+
+  it('选中 id 在树中不存在时不执行复制', () => {
+    const store = useEditorStore();
+    const insertSpy = vi.spyOn(store, 'insertComponentTree');
+    mountComposable(() => useKeyboardShortcuts());
+    store.addComponent('text', 'root', 0);
+    store.setSelectedId('ghost');
+
+    press({ key: 'd', ctrlKey: true });
+
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe('useAIAssistant', () => {
@@ -639,5 +1090,153 @@ describe('useAIAssistant', () => {
     const api = useAIAssistant();
     expect(api.layoutRecommendations.length).toBeGreaterThan(0);
     expect(api.showAIPanel.value).toBe(false);
+  });
+
+  it('generateText 随机索引可返回不同文案', () => {
+    const api = useAIAssistant();
+    const heroResults = new Set<string>();
+    const ctaResults = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      heroResults.add(api.generateText('hero'));
+      ctaResults.add(api.generateText('cta'));
+    }
+    expect(heroResults.size).toBeGreaterThan(1);
+    expect(ctaResults.size).toBeGreaterThan(1);
+  });
+
+  it('空页面标题建议的动作使用精确参数添加文本组件', () => {
+    const store = useEditorStore();
+    const addSpy = vi.spyOn(store, 'addComponent');
+    const api = useAIAssistant();
+    api.analyzePage();
+
+    const rec = api.recommendations.value[0];
+    expect(rec.title).toBe('添加页面标题');
+    expect(rec.description).toBe('一个好的标题能吸引用户注意力');
+
+    rec.action();
+
+    expect(addSpy).toHaveBeenCalledTimes(1);
+    const [type, parentId, index, props, styles] = addSpy.mock.calls[0];
+    expect(type).toBe('text');
+    expect(parentId).toBe('root');
+    expect(index).toBe(0);
+    expect(['欢迎来到我们的产品', '开启全新体验', '创新改变生活', '品质成就未来']).toContain(
+      (props as Record<string, unknown>).content,
+    );
+    expect(props).toMatchObject({
+      color: '#000000',
+      fontSize: '24px',
+      fontWeight: 'bold',
+      textAlign: 'center',
+    });
+    expect(styles).toEqual({ padding: '24px', margin: '0 0 16px 0' });
+  });
+
+  it('按钮建议的动作使用精确参数', () => {
+    const store = useEditorStore();
+    store.addComponent('text', 'root', 0);
+    const addSpy = vi.spyOn(store, 'addComponent');
+    const api = useAIAssistant();
+    api.analyzePage();
+
+    const rec = api.recommendations.value.find((r) => r.title === '添加行动按钮')!;
+    expect(rec.type).toBe('component');
+    expect(rec.description).toBe('引导用户采取行动');
+
+    rec.action();
+
+    const [type, parentId, index, props, styles] = addSpy.mock.calls[0];
+    expect(type).toBe('button');
+    expect(parentId).toBe('root');
+    expect(index).toBe(1);
+    expect(['立即开始', '了解更多', '免费试用', '联系我们']).toContain(
+      (props as Record<string, unknown>).text,
+    );
+    expect(props).toMatchObject({ type: 'primary', size: 'large', block: true });
+    expect(styles).toEqual({ margin: '16px' });
+  });
+
+  it('图片建议的动作使用精确参数', () => {
+    const store = useEditorStore();
+    store.addComponent('text', 'root', 0);
+    const addSpy = vi.spyOn(store, 'addComponent');
+    const api = useAIAssistant();
+    api.analyzePage();
+
+    const rec = api.recommendations.value.find((r) => r.title === '添加图片')!;
+    expect(rec.type).toBe('component');
+    expect(rec.description).toBe('图片能让页面更生动');
+
+    rec.action();
+
+    const [type, parentId, index, props, styles] = addSpy.mock.calls[0];
+    expect(type).toBe('image');
+    expect(parentId).toBe('root');
+    expect(index).toBe(1);
+    expect(props).toEqual({
+      src: 'https://via.placeholder.com/375x200',
+      alt: '配图',
+      width: '100%',
+      height: '200px',
+      objectFit: 'cover',
+    });
+    expect(styles).toEqual({});
+  });
+
+  it('布局建议使用精确类型与文案', () => {
+    const api = useAIAssistant();
+    api.analyzePage();
+
+    const rec = api.recommendations.value.find((r) => r.type === 'layout')!;
+    expect(rec.title).toBe('使用布局模板');
+    expect(rec.description).toBe('快速搭建专业页面');
+  });
+
+  it('applyLayout 为每种组件类型传入精确默认 props', () => {
+    const store = useEditorStore();
+    const addSpy = vi.spyOn(store, 'addComponent');
+    const api = useAIAssistant();
+
+    api.applyLayout(0);
+
+    expect(addSpy).toHaveBeenCalledTimes(4);
+    const calls = addSpy.mock.calls;
+    expect(calls[0][0]).toBe('text');
+    expect(calls[0][2]).toBe(0);
+    expect(calls[0][3]).toEqual({ content: '请输入内容', color: '#333333', fontSize: '14px' });
+    expect(calls[1][0]).toBe('image');
+    expect(calls[1][2]).toBe(1);
+    expect(calls[1][3]).toEqual({
+      src: 'https://via.placeholder.com/375x200',
+      alt: '图片',
+      width: '100%',
+    });
+    expect(calls[2][3]).toEqual({ content: '请输入内容', color: '#333333', fontSize: '14px' });
+    expect(calls[3][0]).toBe('button');
+    expect(calls[3][3]).toEqual({ text: '按钮', type: 'primary', size: 'medium' });
+
+    for (const call of calls) {
+      expect(call[1]).toBe('root');
+      expect(call[4]).toEqual({});
+    }
+  });
+
+  it('applyLayout 覆盖卡片与分割线默认 props', () => {
+    const store = useEditorStore();
+    const addSpy = vi.spyOn(store, 'addComponent');
+    const api = useAIAssistant();
+
+    api.applyLayout(1);
+    expect(addSpy.mock.calls[1][3]).toEqual({
+      title: '卡片标题',
+      backgroundColor: '#ffffff',
+      padding: '16px',
+    });
+
+    addSpy.mockClear();
+    api.applyLayout(2);
+    const dividerCall = addSpy.mock.calls.find((c) => c[0] === 'divider')!;
+    expect(dividerCall[3]).toEqual({ color: '#e8e8e8', thickness: '1px', style: 'solid' });
   });
 });

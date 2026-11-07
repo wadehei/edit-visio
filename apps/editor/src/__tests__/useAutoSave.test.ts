@@ -43,6 +43,8 @@ describe('useAutoSave', () => {
   });
 
   afterEach(() => {
+    // 先恢复对定时器 API 的 spy，再切回真实定时器
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -79,14 +81,48 @@ describe('useAutoSave', () => {
   });
 
   it('API 失败时回退本地、置为 error 并提示', async () => {
-    mocks.savePageSchema.mockRejectedValue(new Error('boom'));
+    const boom = new Error('boom');
+    mocks.savePageSchema.mockRejectedValue(boom);
     const { api } = mountAutoSave('p1', 3);
 
     await api.saveToAPI();
 
     expect(api.saveStatus.value).toBe('error');
     expect(mocks.toast).toHaveBeenCalledWith('自动保存失败，已保存到本地', 'warning');
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'AutoSave',
+      'Failed to save to API, falling back to localStorage',
+      boom,
+    );
     expect(localStorage.getItem('page-builder-data')).toBeTruthy();
+  });
+
+  it('projectId 有效但 pageId 为 null 时仅写入本地存储', async () => {
+    const { api } = mountAutoSave('p1', null);
+
+    await api.saveToAPI();
+
+    expect(mocks.savePageSchema).not.toHaveBeenCalled();
+    expect(localStorage.getItem('page-builder-data')).toBeTruthy();
+    expect(api.saveStatus.value).toBe('idle');
+  });
+
+  it('保存进行中时 saveStatus 为 saving', async () => {
+    let resolveSave!: (value: unknown) => void;
+    mocks.savePageSchema.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const { api } = mountAutoSave('p1', 1);
+
+    const pending = api.saveToAPI();
+    expect(api.saveStatus.value).toBe('saving');
+
+    resolveSave(OK_RESPONSE);
+    await pending;
+    expect(api.saveStatus.value).toBe('saved');
   });
 
   it('被新请求取消的保存不报错、不回退', async () => {
@@ -127,7 +163,29 @@ describe('useAutoSave', () => {
     const { api } = mountAutoSave();
 
     expect(api.loadFromStorage()).toBe(false);
-    expect(mocks.logger.error).toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'AutoSave',
+      'Failed to load from localStorage',
+      expect.any(SyntaxError),
+    );
+  });
+
+  it('saveToStorage 写入失败时记录错误且不抛出', () => {
+    const { api } = mountAutoSave();
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded');
+    });
+
+    try {
+      expect(() => api.saveToStorage()).not.toThrow();
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'AutoSave',
+        'Failed to save to localStorage',
+        expect.any(Error),
+      );
+    } finally {
+      setItemSpy.mockRestore();
+    }
   });
 
   it('saveVersion 变化后经防抖再触发保存', async () => {
@@ -143,6 +201,34 @@ describe('useAutoSave', () => {
     vi.advanceTimersByTime(3000);
     await nextTick();
     expect(mocks.savePageSchema).toHaveBeenCalledTimes(1);
+  });
+
+  it('连续变更仅保留最新的防抖定时器（只保存一次）', async () => {
+    mocks.savePageSchema.mockResolvedValue(OK_RESPONSE);
+    mountAutoSave('p1', 1);
+    const store = useEditorStore();
+
+    store.addComponent('text', 'root', 0);
+    await nextTick();
+    // 第一次定时器尚未到期即再次变更：应先清除旧定时器再重设
+    store.addComponent('button', 'root', 1);
+    await nextTick();
+
+    vi.advanceTimersByTime(3000);
+    await nextTick();
+
+    expect(mocks.savePageSchema).toHaveBeenCalledTimes(1);
+  });
+
+  it('首次变更时无待清定时器，不应调用 clearTimeout', async () => {
+    mountAutoSave('p1', 1);
+    const store = useEditorStore();
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    store.addComponent('text', 'root', 0);
+    await nextTick();
+
+    expect(clearSpy).not.toHaveBeenCalledWith(null);
   });
 
   it('undo/redo 恢复期间跳过自动保存', async () => {
@@ -170,6 +256,35 @@ describe('useAutoSave', () => {
     await nextTick();
 
     expect(mocks.savePageSchema).not.toHaveBeenCalled();
+  });
+
+  it('卸载时中止进行中的保存请求', () => {
+    let capturedSignal: AbortSignal | undefined;
+    mocks.savePageSchema.mockImplementation(
+      (_pid: string, _pageId: string, _params: unknown, config: { signal: AbortSignal }) => {
+        capturedSignal = config.signal;
+        return new Promise(() => {});
+      },
+    );
+    const { api, unmount } = mountAutoSave('p1', 1);
+
+    void api.saveToAPI();
+    expect(capturedSignal).toBeInstanceOf(AbortSignal);
+    expect(capturedSignal!.aborted).toBe(false);
+
+    unmount();
+
+    expect(capturedSignal!.aborted).toBe(true);
+  });
+
+  it('卸载时无待清定时器，不应调用 clearTimeout', () => {
+    const { unmount } = mountAutoSave('p1', 1);
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    // 从未触发保存版本变更，saveTimer 保持为 null
+    unmount();
+
+    expect(clearSpy).not.toHaveBeenCalledWith(null);
   });
 });
 

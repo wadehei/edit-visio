@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import type { App } from 'vue';
 import { logger } from '../utils/logger';
+import { setupGlobalErrorHandlers } from '../utils/errorHandler';
 
 describe('logger', () => {
   afterEach(() => {
@@ -77,6 +79,7 @@ describe('toast', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   async function importToast() {
@@ -143,5 +146,111 @@ describe('toast', () => {
     vi.advanceTimersByTime(4000);
     vi.advanceTimersByTime(300);
     expect(document.body.querySelector('div.fixed')).toBeNull();
+  });
+
+  it('error 类型使用红色样式', async () => {
+    const toast = await importToast();
+
+    toast('出错', 'error');
+
+    const el = document.body.querySelector('div.fixed')!.firstElementChild as HTMLDivElement;
+    expect(el.className).toContain('bg-red-500');
+  });
+
+  it('warning 类型使用黄色样式', async () => {
+    const toast = await importToast();
+
+    toast('警告', 'warning');
+
+    const el = document.body.querySelector('div.fixed')!.firstElementChild as HTMLDivElement;
+    expect(el.className).toContain('bg-yellow-500');
+  });
+
+  it('入场动画：执行 requestAnimationFrame 回调后切换入场类名', async () => {
+    const rafCallbacks: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      rafCallbacks.push(cb);
+      return rafCallbacks.length;
+    });
+
+    const toast = await importToast();
+
+    toast('动画', 'success');
+
+    const el = document.body.querySelector('div.fixed')!.firstElementChild as HTMLDivElement;
+    // 初始态：处于屏幕外且透明
+    expect(el.classList.contains('translate-x-full')).toBe(true);
+    expect(el.classList.contains('opacity-0')).toBe(true);
+    expect(el.classList.contains('translate-x-0')).toBe(false);
+    expect(rafCallbacks).toHaveLength(1);
+
+    rafCallbacks.forEach((cb) => cb(0));
+
+    // 回调执行后应移除入场初始类并添加入场终态类
+    expect(el.classList.contains('translate-x-full')).toBe(false);
+    expect(el.classList.contains('opacity-0')).toBe(false);
+    expect(el.classList.contains('translate-x-0')).toBe(true);
+    expect(el.classList.contains('opacity-100')).toBe(true);
+  });
+});
+
+describe('errorHandler', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  function installHandler() {
+    const app: {
+      config: { errorHandler?: (err: unknown, instance: unknown, info: string) => void };
+    } = { config: {} };
+    setupGlobalErrorHandlers(app as unknown as App);
+    return app;
+  }
+
+  it('instance 为 null 时组件名回退为 <anonymous> 且不抛错', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const app = installHandler();
+
+    expect(() => app.config.errorHandler?.(new Error('x'), null, 'render')).not.toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith('[Vue] Component: <anonymous>');
+  });
+
+  it('instance 缺少 $options 时组件名回退为 <anonymous> 且不抛错', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const app = installHandler();
+
+    expect(() => app.config.errorHandler?.(new Error('x'), {}, 'setup')).not.toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith('[Vue] Component: <anonymous>');
+  });
+
+  it('注册 unhandledrejection 监听器，事件触发时记录原因', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    installHandler();
+    const event = new Event('unhandledrejection') as Event & { reason?: unknown };
+    event.reason = new Error('nope');
+
+    window.dispatchEvent(event);
+
+    expect(errorSpy).toHaveBeenCalledWith('[Runtime] Unhandled rejection', event.reason);
+  });
+
+  it('注册 error 监听器，事件触发时记录位置与信息', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    installHandler();
+
+    window.dispatchEvent(
+      new ErrorEvent('error', { message: 'oops', filename: 'app.js', lineno: 42 }),
+    );
+
+    expect(errorSpy).toHaveBeenCalledWith('[Runtime] Error at app.js:42', 'oops');
   });
 });

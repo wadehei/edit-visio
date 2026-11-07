@@ -48,6 +48,7 @@ describe('authStore', () => {
 
     await store.login('alice', 'secret');
 
+    expect(vi.mocked(authApi.login)).toHaveBeenCalledWith({ login: 'alice', password: 'secret' });
     expect(store.accessToken).toBe('access-token');
     expect(store.user).toEqual(USER);
     expect(store.isLoggedIn).toBe(true);
@@ -108,7 +109,17 @@ describe('authStore', () => {
     const store = useAuthStore();
     store.accessToken = 't';
 
-    await expect(store.fetchUserInfo()).rejects.toThrow('获取用户信息失败');
+    const err = await store.fetchUserInfo().then(
+      () => {
+        throw new Error('应当 reject');
+      },
+      (e: unknown) => e,
+    );
+
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toBe('获取用户信息失败');
+    // 原始错误应作为 cause 被保留，便于上层排查
+    expect((err as Error & { cause?: unknown }).cause).toBe(cause);
 
     expect(store.accessToken).toBeNull();
     expect(store.user).toBeNull();
@@ -128,14 +139,19 @@ describe('authStore', () => {
     expect(store.user).toEqual(USER);
   });
 
-  it('bootstrap 无有效会话时保持未登录且不抛错', async () => {
+  it('bootstrap 无有效会话时清除残留认证状态、保持未登录且不抛错', async () => {
     vi.mocked(authApi.refreshToken).mockRejectedValue(new Error('no session'));
     const store = useAuthStore();
+    // 预置残留的内存态，验证失败分支会调用 clearAuth 清空
+    store.accessToken = 'stale-token';
+    store.user = USER;
 
     await expect(store.bootstrap()).resolves.toBeUndefined();
 
     expect(store.initialized).toBe(true);
     expect(store.isLoggedIn).toBe(false);
+    expect(store.accessToken).toBeNull();
+    expect(store.user).toBeNull();
   });
 
   it('bootstrap 并发调用复用同一个 Promise', async () => {
@@ -192,5 +208,11 @@ describe('authStore', () => {
 
     expect(store.user).toBeNull();
     expect(store.username).toBe('');
+  });
+
+  it('store id 为 auth', () => {
+    const store = useAuthStore();
+
+    expect(store.$id).toBe('auth');
   });
 });

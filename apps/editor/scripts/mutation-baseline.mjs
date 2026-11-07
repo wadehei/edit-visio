@@ -110,6 +110,10 @@ const baseline = {
   config: {
     mutate: strykerConfig.mutate,
     coverageAnalysis: strykerConfig.coverageAnalysis,
+    // ignoreStatic：跳过「模块初始化期即执行」的变异体（多为 animationPresets / devices /
+    // textTemplates 等纯数据表），它们需为每个变异体重跑整套用例、占单次运行 ~84% 耗时，
+    // 且产生的多为等价变异。真正承载分支逻辑的变异体仍全部计入。
+    ignoreStatic: strykerConfig.ignoreStatic ?? false,
     thresholds: strykerConfig.thresholds,
   },
   totals: {

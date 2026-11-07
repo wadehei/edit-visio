@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method -- 断言 mock 方法调用需引用方法本身，非真实 this 绑定场景 */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import type { PageSchema } from '@page-builder/shared';
@@ -49,6 +50,17 @@ function seedProjects(projects: Project[], currentId?: string) {
   if (currentId) localStorage.setItem('page-builder-current-project', currentId);
 }
 
+/** 读取持久化到 localStorage 的项目列表 */
+function readStoredProjects(): Project[] {
+  return JSON.parse(localStorage.getItem('page-builder-projects')!) as Project[];
+}
+
+/** 取某个 mock 最近一次调用的第 n 个参数 */
+function lastArg<T>(mock: { mock: { calls: unknown[][] } }, index: number): T {
+  const calls = mock.mock.calls;
+  return calls[calls.length - 1][index] as T;
+}
+
 describe('useProjectManager', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -93,6 +105,41 @@ describe('useProjectManager', () => {
     expect(toast).toHaveBeenCalledWith('项目名称不能超过 100 个字符', 'error');
   });
 
+  it('createProject 接受恰好 100 字符的名称', () => {
+    const pm = useProjectManager();
+
+    expect(() => pm.createProject('x'.repeat(100))).not.toThrow();
+    expect(pm.projects.value).toHaveLength(1);
+    expect(vi.mocked(projectApi.createProject)).toHaveBeenCalledWith({
+      name: 'x'.repeat(100),
+      description: '',
+    });
+  });
+
+  it('createProject 默认描述为空串且页面/当前页初始值为空', () => {
+    const pm = useProjectManager();
+
+    const created = pm.createProject('X');
+
+    expect(created.description).toBe('');
+    expect(created.pages).toEqual([]);
+    expect(created.currentPageId).toBe('');
+  });
+
+  it('createProject 裁剪并截断描述字段', () => {
+    const pm = useProjectManager();
+    const raw = `  ${'a'.repeat(600)}  `;
+
+    const created = pm.createProject('X', raw);
+
+    expect(created.description).toBe('a'.repeat(500));
+    expect(created.description).toHaveLength(500);
+    expect(vi.mocked(projectApi.createProject)).toHaveBeenCalledWith({
+      name: 'X',
+      description: 'a'.repeat(500),
+    });
+  });
+
   it('createProject 乐观写入后用 API 返回的真实 ID 替换', async () => {
     const pm = useProjectManager();
 
@@ -111,6 +158,21 @@ describe('useProjectManager', () => {
     expect(pm.projects.value[0].id).toBe('42');
   });
 
+  it('createProject 完成后仅替换匹配项目的临时 ID 并持久化', async () => {
+    seedProjects([makeProject({ id: 'keep', name: '旧项目' })]);
+    const pm = useProjectManager();
+
+    pm.createProject('新项目');
+    await flushPromises();
+
+    // 非匹配项目不受影响
+    expect(pm.projects.value.find((p) => p.id === 'keep')?.name).toBe('旧项目');
+    const created = pm.projects.value.find((p) => p.name === '新项目')!;
+    expect(created.id).toBe('42');
+    // .then 内的 saveProjectsToLocal 已把真实 ID 落盘
+    expect(readStoredProjects().map((p) => p.id)).toEqual(['keep', '42']);
+  });
+
   it('createProject 同步失败时回退本地并提示', async () => {
     vi.mocked(projectApi.createProject).mockRejectedValue(new Error('net'));
     const pm = useProjectManager();
@@ -120,6 +182,11 @@ describe('useProjectManager', () => {
 
     expect(pm.projects.value).toHaveLength(1);
     expect(toast).toHaveBeenCalledWith('创建项目同步失败，已保存到本地', 'warning');
+    expect(logger.error).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to create project via API',
+      expect.any(Error),
+    );
   });
 
   it('deleteProject 删除项目并在删除当前项目时切换', async () => {
@@ -156,6 +223,36 @@ describe('useProjectManager', () => {
     expect(vi.mocked(projectApi.deleteProject)).not.toHaveBeenCalled();
   });
 
+  it('deleteProject 持久化且删除非当前项时保持当前选中', () => {
+    seedProjects(
+      [makeProject({ id: 'a' }), makeProject({ id: 'c' }), makeProject({ id: 'b' })],
+      'b',
+    );
+    const pm = useProjectManager();
+
+    pm.deleteProject('a');
+
+    expect(pm.projects.value.map((p) => p.id)).toEqual(['c', 'b']);
+    expect(pm.currentProjectId.value).toBe('b');
+    expect(readStoredProjects().map((p) => p.id)).toEqual(['c', 'b']);
+  });
+
+  it('deleteProject 同步失败时记录错误并提示', async () => {
+    seedProjects([makeProject({ id: 'a' })]);
+    vi.mocked(projectApi.deleteProject).mockRejectedValue(new Error('net'));
+    const pm = useProjectManager();
+
+    pm.deleteProject('a');
+    await flushPromises();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to delete project via API',
+      expect.any(Error),
+    );
+    expect(toast).toHaveBeenCalledWith('删除项目同步失败', 'warning');
+  });
+
   it('updateProject 更新字段并仅提交 name/description', async () => {
     seedProjects([makeProject({ id: 'a', name: '旧名' })]);
     const pm = useProjectManager();
@@ -169,6 +266,45 @@ describe('useProjectManager', () => {
       description: '说明',
     });
     await flushPromises();
+  });
+
+  it('updateProject 仅替换匹配项目并持久化', () => {
+    seedProjects([makeProject({ id: 'a', name: '旧' }), makeProject({ id: 'b', name: 'B' })]);
+    const pm = useProjectManager();
+
+    pm.updateProject('a', { name: '新' });
+
+    expect(pm.projects.value.find((p) => p.id === 'b')!.name).toBe('B');
+    expect(readStoredProjects().find((p) => p.id === 'a')!.name).toBe('新');
+  });
+
+  it('updateProject 仅提交已定义的键', () => {
+    seedProjects([makeProject({ id: 'a', name: 'n', description: 'd' })]);
+    const pm = useProjectManager();
+
+    pm.updateProject('a', { description: 'new' });
+    expect(lastArg(vi.mocked(projectApi.updateProject), 1)).toStrictEqual({
+      description: 'new',
+    });
+
+    pm.updateProject('a', { pages: [] });
+    expect(lastArg(vi.mocked(projectApi.updateProject), 1)).toStrictEqual({});
+  });
+
+  it('updateProject 同步失败时记录错误并提示', async () => {
+    seedProjects([makeProject({ id: 'a' })]);
+    vi.mocked(projectApi.updateProject).mockRejectedValue(new Error('net'));
+    const pm = useProjectManager();
+
+    pm.updateProject('a', { name: 'x' });
+    await flushPromises();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to update project via API',
+      expect.any(Error),
+    );
+    expect(toast).toHaveBeenCalledWith('更新项目同步失败', 'warning');
   });
 
   it('setCurrentProject 丢弃过期的页面加载响应', async () => {
@@ -216,6 +352,35 @@ describe('useProjectManager', () => {
 
     expect(pm.projects.value[0].currentPageId).toBe('2');
     expect(pm.currentPage.value?.name).toBe('Home');
+    // 加载完成后应持久化页面列表
+    expect(readStoredProjects()[0].pages.map((p) => p.id)).toEqual(['1', '2']);
+  });
+
+  it('setCurrentProject 空页面列表时不选中且不产生告警', async () => {
+    seedProjects([makeProject({ id: 'a' })]);
+    vi.mocked(pageApi.getPages).mockResolvedValue(ok({ list: [] }));
+
+    const pm = useProjectManager();
+    pm.setCurrentProject('a');
+    await flushPromises();
+
+    expect(pm.projects.value[0].currentPageId).toBe('');
+    // 空列表不应进入首页选择分支（否则会因访问 loadedPages[0] 抛错）
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('setCurrentProject 首页与页面 ID 不匹配时回退到首个页面', async () => {
+    seedProjects([makeProject({ id: 'a' })]);
+    vi.mocked(pageApi.getPages).mockResolvedValue(
+      ok({ list: [{ pageId: 1, title: 'A', isHome: true, schema: makePage('X', 'A') }] }),
+    );
+
+    const pm = useProjectManager();
+    pm.setCurrentProject('a');
+    await flushPromises();
+
+    expect(pm.projects.value[0].currentPageId).toBe('X');
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it('setCurrentProject 对缺失 schema 的页面使用默认兜底', async () => {
@@ -231,7 +396,9 @@ describe('useProjectManager', () => {
     const page = pm.projects.value[0].pages[0];
     expect(page.id).toBe('5');
     expect(page.name).toBe('Legacy');
+    expect(page.version).toBe('1.0.0');
     expect(page.props.backgroundColor).toBe('#ffffff');
+    expect(page.children).toEqual([]);
   });
 
   it('setCurrentProject 加载失败时保留现有数据', async () => {
@@ -244,6 +411,11 @@ describe('useProjectManager', () => {
 
     expect(pm.currentProjectId.value).toBe('a');
     expect(pm.projects.value[0].pages).toEqual([]);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to load pages from API',
+      expect.any(Error),
+    );
   });
 
   it('addPageToProject 添加页面并用 API 返回的 ID 替换', async () => {
@@ -261,6 +433,52 @@ describe('useProjectManager', () => {
     expect(pm.projects.value[0].currentPageId).toBe('99');
   });
 
+  it('addPageToProject 仅更新匹配项目并持久化', () => {
+    seedProjects([makeProject({ id: 'p1' }), makeProject({ id: 'p2' })]);
+    const pm = useProjectManager();
+
+    pm.addPageToProject('p1', makePage('tmp-1', '新页面'));
+
+    const p2 = pm.projects.value.find((p) => p.id === 'p2')!;
+    expect(p2.pages).toEqual([]);
+    expect(p2.currentPageId).toBe('');
+    expect(vi.mocked(pageApi.createPage)).toHaveBeenCalledWith('p1', { title: '新页面' });
+    expect(
+      readStoredProjects()
+        .find((p) => p.id === 'p1')!
+        .pages.map((pg) => pg.id),
+    ).toEqual(['tmp-1']);
+  });
+
+  it('addPageToProject 对不存在的项目不调用创建接口', () => {
+    seedProjects([makeProject({ id: 'p1' })]);
+    const pm = useProjectManager();
+
+    pm.addPageToProject('missing', makePage('x'));
+
+    expect(vi.mocked(pageApi.createPage)).not.toHaveBeenCalled();
+    expect(pm.projects.value[0].pages).toEqual([]);
+  });
+
+  it('addPageToProject 完成后仅替换匹配项目的页面 ID 并持久化', async () => {
+    seedProjects([makeProject({ id: 'p1' }), makeProject({ id: 'p2' })]);
+    const pm = useProjectManager();
+
+    pm.addPageToProject('p1', makePage('tmp-1', '新页面'));
+    const p2Ref = pm.projects.value.find((p) => p.id === 'p2')!;
+
+    await flushPromises();
+
+    // 非匹配项目对象保持引用不变（不可变更新）
+    expect(pm.projects.value.find((p) => p.id === 'p2')).toBe(p2Ref);
+    expect(pm.projects.value.find((p) => p.id === 'p1')!.pages.map((pg) => pg.id)).toEqual(['99']);
+    expect(
+      readStoredProjects()
+        .find((p) => p.id === 'p1')!
+        .pages.map((pg) => pg.id),
+    ).toEqual(['99']);
+  });
+
   it('removePageFromProject 删除页面并迁移 currentPageId', async () => {
     seedProjects([
       makeProject({ id: 'p1', pages: [makePage('pa'), makePage('pb')], currentPageId: 'pa' }),
@@ -275,6 +493,69 @@ describe('useProjectManager', () => {
     await flushPromises();
   });
 
+  it('removePageFromProject 仅过滤匹配项目并持久化', () => {
+    seedProjects([
+      makeProject({ id: 'p1', pages: [makePage('pa'), makePage('pb')], currentPageId: 'pb' }),
+      makeProject({ id: 'p2', pages: [makePage('pc')], currentPageId: 'pc' }),
+    ]);
+    const pm = useProjectManager();
+
+    const p2Ref = pm.projects.value.find((p) => p.id === 'p2')!;
+    pm.removePageFromProject('p1', 'pa');
+
+    expect(pm.projects.value.find((p) => p.id === 'p2')).toBe(p2Ref);
+    expect(
+      readStoredProjects()
+        .find((p) => p.id === 'p1')!
+        .pages.map((pg) => pg.id),
+    ).toEqual(['pb']);
+  });
+
+  it('removePageFromProject 删除非当前页面时保留当前选中（不重算）', () => {
+    seedProjects([
+      makeProject({
+        id: 'p1',
+        pages: [makePage('pa'), makePage('pb'), makePage('pc')],
+        currentPageId: 'pc',
+      }),
+    ]);
+    const pm = useProjectManager();
+
+    pm.removePageFromProject('p1', 'pa');
+
+    expect(pm.projects.value[0].currentPageId).toBe('pc');
+  });
+
+  it('removePageFromProject 删除重复 ID 的当前页面时清空选中', () => {
+    seedProjects([
+      makeProject({ id: 'p1', pages: [makePage('dup'), makePage('dup')], currentPageId: 'dup' }),
+    ]);
+    const pm = useProjectManager();
+
+    pm.removePageFromProject('p1', 'dup');
+
+    expect(pm.projects.value[0].pages).toEqual([]);
+    expect(pm.projects.value[0].currentPageId).toBe('');
+  });
+
+  it('removePageFromProject 同步失败时记录错误并提示', async () => {
+    seedProjects([
+      makeProject({ id: 'p1', pages: [makePage('pa'), makePage('pb')], currentPageId: 'pa' }),
+    ]);
+    vi.mocked(pageApi.deletePage).mockRejectedValue(new Error('net'));
+    const pm = useProjectManager();
+
+    pm.removePageFromProject('p1', 'pa');
+    await flushPromises();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to delete page via API',
+      expect.any(Error),
+    );
+    expect(toast).toHaveBeenCalledWith('删除页面同步失败', 'warning');
+  });
+
   it('updatePageInProject 深拷贝替换页面内容', () => {
     seedProjects([makeProject({ id: 'p1', pages: [makePage('pa', '旧')] })]);
     const pm = useProjectManager();
@@ -282,6 +563,7 @@ describe('useProjectManager', () => {
     pm.updatePageInProject('p1', makePage('pa', '新'));
 
     expect(pm.projects.value[0].pages[0].name).toBe('新');
+    expect(readStoredProjects()[0].pages[0].name).toBe('新');
   });
 
   it('setCurrentPage 切换当前页面', () => {
@@ -293,6 +575,16 @@ describe('useProjectManager', () => {
     expect(pm.projects.value[0].currentPageId).toBe('pb');
   });
 
+  it('setCurrentPage 仅更新匹配项目并持久化', () => {
+    seedProjects([makeProject({ id: 'p1' }), makeProject({ id: 'p2' })]);
+    const pm = useProjectManager();
+
+    pm.setCurrentPage('p1', 'x');
+
+    expect(pm.projects.value.find((p) => p.id === 'p2')!.currentPageId).toBe('');
+    expect(readStoredProjects().find((p) => p.id === 'p1')!.currentPageId).toBe('x');
+  });
+
   it('duplicateProject 生成副本并调用复制接口', async () => {
     seedProjects([makeProject({ id: 'p1', name: '原本' })]);
     const pm = useProjectManager();
@@ -301,13 +593,39 @@ describe('useProjectManager', () => {
 
     expect(dup?.name).toBe('原本 (副本)');
     expect(pm.projects.value).toHaveLength(2);
+    expect(readStoredProjects()).toHaveLength(2);
     await flushPromises();
     expect(vi.mocked(projectApi.copyProject)).toHaveBeenCalledWith('p1');
+  });
+
+  it('duplicateProject 完成后用 API 返回的真实 ID 更新副本', async () => {
+    seedProjects([makeProject({ id: 'p1', name: '原本' })]);
+    const pm = useProjectManager();
+
+    pm.duplicateProject('p1');
+    await flushPromises();
+
+    // 原项目不受影响
+    expect(pm.projects.value.find((p) => p.name === '原本')!.id).toBe('p1');
+    const copy = pm.projects.value.find((p) => p.name === '原本 (副本)')!;
+    expect(copy.id).toBe('77');
+    expect(copy.createdAt).toBe(new Date('2024-01-01T00:00:00Z').getTime());
+    expect(copy.updatedAt).toBe(new Date('2024-01-02T00:00:00Z').getTime());
+    // .then 内的 saveProjectsToLocal 已把真实 ID 落盘
+    expect(readStoredProjects().map((p) => p.id)).toEqual(['p1', '77']);
   });
 
   it('duplicateProject 对不存在的项目返回 null', () => {
     const pm = useProjectManager();
     expect(pm.duplicateProject('missing')).toBeNull();
+  });
+
+  it('duplicateProject 非空列表下对不存在的项目返回 null', () => {
+    seedProjects([makeProject({ id: 'p1' })]);
+    const pm = useProjectManager();
+
+    expect(pm.duplicateProject('missing')).toBeNull();
+    expect(vi.mocked(projectApi.copyProject)).not.toHaveBeenCalled();
   });
 
   it('loadProjectsFromAPI 成功时映射服务端数据', async () => {
@@ -331,6 +649,10 @@ describe('useProjectManager', () => {
     expect(list).toHaveLength(1);
     expect(pm.projects.value[0].id).toBe('1');
     expect(pm.projects.value[0].description).toBe('');
+    expect(pm.projects.value[0].pages).toEqual([]);
+    expect(pm.projects.value[0].currentPageId).toBe('');
+    // 成功后持久化到本地
+    expect(readStoredProjects().map((p) => p.id)).toEqual(['1']);
   });
 
   it('loadProjectsFromAPI 失败时回退本地并提示', async () => {
@@ -342,6 +664,11 @@ describe('useProjectManager', () => {
 
     expect(list.map((p) => p.id)).toEqual(['local']);
     expect(toast).toHaveBeenCalledWith('从服务器加载项目失败，使用本地数据', 'warning');
+    expect(logger.warn).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to load projects from API, falling back to localStorage',
+      expect.any(Error),
+    );
   });
 
   it('本地项目 JSON 解析失败时回退为空数组', () => {
@@ -521,6 +848,11 @@ describe('useProjectManager', () => {
     await flushPromises();
 
     expect(toast).toHaveBeenCalledWith('创建页面同步失败，已保存到本地', 'warning');
+    expect(logger.error).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to create page via API',
+      expect.any(Error),
+    );
   });
 
   it('removePageFromProject 对不存在项目或无匹配页面无副作用', () => {
@@ -578,5 +910,10 @@ describe('useProjectManager', () => {
     await flushPromises();
 
     expect(toast).toHaveBeenCalledWith('复制项目同步失败，已保存到本地', 'warning');
+    expect(logger.error).toHaveBeenCalledWith(
+      'ProjectManager',
+      'Failed to duplicate project via API',
+      expect.any(Error),
+    );
   });
 });

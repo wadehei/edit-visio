@@ -67,6 +67,7 @@ export function useTheme() {
 
   // 监听系统主题变化（组件卸载时清理，防止内存泄漏）
   const mediaQuery =
+    // Stryker disable next-line ConditionalExpression,StringLiteral: 浏览器/jsdom 中 window 恒有定义（typeof window === 'object'），SSR 守卫的条件恒为真、字符串比较 'undefined' 恒不成立，两处变异在当前运行环境语义等价，无法通过测试区分
     typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
   const handleSystemThemeChange = () => {
