@@ -42,7 +42,7 @@ vi.mock('../utils/toast');
 vi.mock('../api/project');
 vi.mock('../api/page', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/page')>();
-  return { ...actual, getPages: vi.fn(), createPage: vi.fn() };
+  return { ...actual, getPages: vi.fn(), getPage: vi.fn(), createPage: vi.fn() };
 });
 
 vi.mock('../composables/useAutoSave', () => ({
@@ -407,6 +407,11 @@ describe('EditorPage', () => {
     vi.mocked(pageApi.getPages).mockResolvedValue({
       data: { data: { list: pages } },
     } as never);
+    // 列表接口不返回 schema，详情接口按 pageId 返回带 schema 的页面
+    vi.mocked(pageApi.getPage).mockImplementation((_projectId, pageId) => {
+      const found = pages.find((p) => String(p.pageId) === String(pageId)) ?? makePage();
+      return { data: { data: found } } as never;
+    });
   }
 
   beforeEach(() => {
@@ -434,6 +439,94 @@ describe('EditorPage', () => {
     expect(wrapper.text()).toContain('2 个页面');
     expect(wrapper.text()).toContain('首页');
     expect(wrapper.text()).toContain('关于');
+  });
+
+  it('列表不含 schema 时通过页面详情接口回显组件', async () => {
+    const comp: ComponentSchema = { id: 'c1', type: 'text', props: { content: 'x' }, styles: {} };
+    vi.mocked(projectApi.getProject).mockResolvedValue({
+      data: { data: { name: '示例项目' } },
+    } as never);
+    vi.mocked(pageApi.getPages).mockResolvedValue({
+      data: { data: { list: [makePage({ pageId: 7, schema: null as never })] } },
+    } as never);
+    vi.mocked(pageApi.getPage).mockResolvedValue({
+      data: {
+        data: makePage({
+          pageId: 7,
+          schema: { id: 'p7', name: '详情页', children: [comp] },
+        }),
+      },
+    } as never);
+
+    const pinia = createPinia();
+    mount(EditorPage, { global: { plugins: [pinia], stubs: editorStubs } });
+    await flushPromises();
+
+    expect(pageApi.getPage).toHaveBeenCalledWith('42', '7');
+    const store = useEditorStore(pinia);
+    expect(store.page.children).toHaveLength(1);
+    expect(store.page.children[0].id).toBe('c1');
+  });
+
+  it('详情接口失败时回退使用列表自带的 schema', async () => {
+    const comp: ComponentSchema = { id: 'c9', type: 'button', props: {}, styles: {} };
+    vi.mocked(projectApi.getProject).mockResolvedValue({
+      data: { data: { name: '示例项目' } },
+    } as never);
+    vi.mocked(pageApi.getPages).mockResolvedValue({
+      data: {
+        data: {
+          list: [makePage({ pageId: 8, schema: { id: 'p8', name: '列表页', children: [comp] } })],
+        },
+      },
+    } as never);
+    vi.mocked(pageApi.getPage).mockRejectedValue(new Error('500'));
+
+    const pinia = createPinia();
+    mount(EditorPage, { global: { plugins: [pinia], stubs: editorStubs } });
+    await flushPromises();
+
+    const store = useEditorStore(pinia);
+    expect(store.page.children).toHaveLength(1);
+    expect(store.page.children[0].id).toBe('c9');
+  });
+
+  it('详情 schema 为空时重置为空白页', async () => {
+    vi.mocked(projectApi.getProject).mockResolvedValue({
+      data: { data: { name: '示例项目' } },
+    } as never);
+    vi.mocked(pageApi.getPages).mockResolvedValue({
+      data: { data: { list: [makePage({ pageId: 9, schema: null as never })] } },
+    } as never);
+    vi.mocked(pageApi.getPage).mockResolvedValue({
+      data: { data: makePage({ pageId: 9, schema: null as never }) },
+    } as never);
+
+    const pinia = createPinia();
+    mount(EditorPage, { global: { plugins: [pinia], stubs: editorStubs } });
+    await flushPromises();
+
+    const store = useEditorStore(pinia);
+    expect(store.page.children).toHaveLength(0);
+  });
+
+  it('详情接口失败且列表无 schema 时保持空白并记录日志', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    vi.mocked(projectApi.getProject).mockResolvedValue({
+      data: { data: { name: '示例项目' } },
+    } as never);
+    vi.mocked(pageApi.getPages).mockResolvedValue({
+      data: { data: { list: [makePage({ pageId: 10, schema: null as never })] } },
+    } as never);
+    vi.mocked(pageApi.getPage).mockRejectedValue(new Error('500'));
+
+    const pinia = createPinia();
+    mount(EditorPage, { global: { plugins: [pinia], stubs: editorStubs } });
+    await flushPromises();
+
+    expect(errorSpy).toHaveBeenCalledWith('EditorPage', '加载页面详情失败', expect.anything());
+    const store = useEditorStore(pinia);
+    expect(store.page.children).toHaveLength(0);
   });
 
   it('项目加载失败时展示占位文案', async () => {

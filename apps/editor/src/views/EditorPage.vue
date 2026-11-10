@@ -307,7 +307,7 @@ onMounted(async () => {
     if (pages.value.length > 0) {
       // 选择首页或第一个页面
       const homePage = pages.value.find((p) => p.isHome) || pages.value[0];
-      handleSelectPage(homePage);
+      await handleSelectPage(homePage);
     }
   } catch {
     logger.error('EditorPage', '加载页面列表失败');
@@ -316,11 +316,28 @@ onMounted(async () => {
   }
 });
 
-function handleSelectPage(pg: PageVO) {
+/**
+ * 列表接口不返回 schema（schema 恒为 null），
+ * 因此必须再调详情接口拉取完整 schema 才能正确回显，否则画布始终为空。
+ */
+async function handleSelectPage(pg: PageVO) {
   currentPageId.value = pg.pageId;
-  if (pg.schema && typeof pg.schema === 'object') {
-    editorStore.setPage(toPageSchema(pg.schema));
+  try {
+    const { data } = await pageApi.getPage(projectId, String(pg.pageId));
+    applyPageSchema(data.data.schema);
+  } catch (err) {
+    logger.error('EditorPage', '加载页面详情失败', err);
+    // 详情拉取失败时，若列表项自带 schema 则兜底回显
+    if (pg.schema && typeof pg.schema === 'object') {
+      applyPageSchema(pg.schema);
+    }
   }
+}
+
+/** 将（可能为空的）schema 安全应用到编辑器；空 schema 时重置为空白页 */
+function applyPageSchema(schema: unknown) {
+  const raw = schema && typeof schema === 'object' ? (schema as Record<string, unknown>) : {};
+  editorStore.setPage(toPageSchema(raw));
 }
 
 async function handleCreatePage() {
@@ -329,7 +346,7 @@ async function handleCreatePage() {
   try {
     const { data } = await pageApi.createPage(projectId, { title, isHome: true });
     pages.value.push(data.data);
-    handleSelectPage(data.data);
+    await handleSelectPage(data.data);
   } catch (err: unknown) {
     const error = err instanceof Error ? err.message : '未知错误';
     toast('创建失败: ' + error, 'error');
