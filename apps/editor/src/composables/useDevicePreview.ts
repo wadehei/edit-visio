@@ -41,12 +41,16 @@ export const devices: Record<DeviceType, DeviceConfig> = {
   },
 };
 
-export function useDevicePreview() {
-  const currentDevice = ref<DeviceType>('mobile');
-  const customWidth = ref(375);
-  const customHeight = ref(667);
-  const showDeviceSwitcher = ref(true);
+/**
+ * 模块级单例状态：确保 DeviceSwitcher 与 Canvas 共享同一份设备状态。
+ * 之前每次调用 useDevicePreview 都会创建新的 ref，导致切换设备时画布无响应。
+ */
+const currentDevice = ref<DeviceType>('mobile');
+const customWidth = ref(375);
+const customHeight = ref(667);
+const showDeviceSwitcher = ref(true);
 
+export function useDevicePreview() {
   const currentDeviceConfig = computed(() => {
     if (currentDevice.value === 'custom') {
       return {

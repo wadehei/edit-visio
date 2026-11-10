@@ -118,7 +118,7 @@ import { logger } from '../utils/logger';
 
 const allComponents: ComponentMeta[] = getAllMetas();
 
-const { setDragging } = useEditorStore();
+const { setDragging, setDraggedComponentType, clearDragState } = useEditorStore();
 
 const searchQuery = ref('');
 const selectedCategory = ref('all');
@@ -199,11 +199,12 @@ const handleDragStart = (event: DragEvent, componentType: string) => {
     event.dataTransfer.setData('componentType', componentType);
     event.dataTransfer.effectAllowed = 'copy';
     setDragging(true);
+    setDraggedComponentType(componentType);
   }
 };
 
 const handleDragEnd = () => {
-  setDragging(false);
+  clearDragState();
 };
 
 const isFavorite = (type: string) => {

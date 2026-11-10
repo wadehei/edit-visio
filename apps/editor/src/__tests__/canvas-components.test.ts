@@ -93,7 +93,7 @@ describe('Canvas', () => {
     return mount(Canvas, {
       global: {
         plugins: [pinia],
-        stubs: { CanvasComponent: true, DeviceSwitcher: true, ContextMenu: ContextMenuStub },
+        stubs: { DeviceSwitcher: true, ContextMenu: ContextMenuStub },
       },
     });
   }
@@ -222,7 +222,8 @@ describe('Canvas', () => {
     expect(dataTransfer.setData).toHaveBeenCalledWith('componentId', 'a');
     expect(dataTransfer.effectAllowed).toBe('move');
 
-    await items[1].trigger('drop');
+    await items[1].trigger('dragover', { dataTransfer, clientY: 100 });
+    await items[1].trigger('drop', { dataTransfer });
 
     expect(store.page.children.map((c) => c.id)).toEqual(['b', 'a']);
   });
@@ -237,13 +238,13 @@ describe('Canvas', () => {
     const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '', dropEffect: '' };
 
     await items[0].trigger('dragstart', { dataTransfer });
-    expect(wrapper.find('.bg-blue-500.z-10').exists()).toBe(false);
+    expect(wrapper.find('.bg-blue-500').exists()).toBe(false);
 
     await items[1].trigger('dragover', { dataTransfer });
-    expect(wrapper.find('.bg-blue-500.z-10').exists()).toBe(true);
+    expect(wrapper.find('.bg-blue-500').exists()).toBe(true);
 
     await items[0].trigger('dragend');
-    expect(wrapper.find('.bg-blue-500.z-10').exists()).toBe(false);
+    expect(wrapper.find('.bg-blue-500').exists()).toBe(false);
   });
 
   it('右键组件弹出上下文菜单', async () => {
@@ -377,14 +378,13 @@ describe('CanvasComponent', () => {
     expect(store.page.children[1].id).not.toBe('a');
   });
 
-  it('容器为空时显示拖拽占位与放置提示', () => {
+  it('容器为空时显示拖拽占位提示', () => {
     const store = useEditorStore();
     const container = makeSchema('c1', 'container');
     store.setPage({ ...store.page, children: [container] });
     const wrapper = mountComponent(container, true);
 
     expect(wrapper.text()).toContain('拖拽组件到此处');
-    expect(wrapper.text()).toContain('释放以添加到容器');
   });
 
   it('容器有子组件时递归渲染子组件', () => {
@@ -404,8 +404,15 @@ describe('CanvasComponent', () => {
     store.setPage({ ...store.page, children: [container] });
     const wrapper = mountComponent(container, true);
 
-    const dataTransfer = { getData: vi.fn(() => 'button') };
-    await wrapper.find('.absolute.inset-0').trigger('drop', { dataTransfer });
+    const dataTransfer = {
+      getData: vi.fn(() => 'button'),
+      setData: vi.fn(),
+      dropEffect: '',
+      effectAllowed: '',
+    };
+    // 先触发 dragover 设置落点为容器内部，再 drop
+    await wrapper.trigger('dragover', { dataTransfer, clientY: 0 });
+    await wrapper.trigger('drop', { dataTransfer });
 
     expect(store.page.children[0].children).toHaveLength(1);
     expect(store.page.children[0].children![0].type).toBe('button');

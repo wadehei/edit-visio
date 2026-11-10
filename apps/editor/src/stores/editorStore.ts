@@ -9,6 +9,7 @@ import {
   removeComponent,
   insertComponent,
   findComponentInTree,
+  isDescendant,
   duplicateComponentTree,
 } from '@page-builder/shared';
 
@@ -28,6 +29,10 @@ export const useEditorStore = defineStore('editor', () => {
   const selectedIds = ref<string[]>([]);
   const hoveredId = ref<string | null>(null);
   const isDragging = ref(false);
+  /** 当前正在拖拽的已有组件 ID（画布内重排/移动） */
+  const draggedComponentId = ref<string | null>(null);
+  /** 当前正在拖拽的新组件类型（从组件面板拖入） */
+  const draggedComponentType = ref<string | null>(null);
   const canvasScale = ref(1);
   const canvasOffset = ref({ x: 0, y: 0 });
   const showGrid = ref(false);
@@ -109,6 +114,21 @@ export const useEditorStore = defineStore('editor', () => {
 
   const setDragging = (dragging: boolean) => {
     isDragging.value = dragging;
+  };
+
+  const setDraggedComponentId = (id: string | null) => {
+    draggedComponentId.value = id;
+  };
+
+  const setDraggedComponentType = (type: string | null) => {
+    draggedComponentType.value = type;
+  };
+
+  /** 清除所有拖拽状态 */
+  const clearDragState = () => {
+    draggedComponentId.value = null;
+    draggedComponentType.value = null;
+    isDragging.value = false;
   };
 
   const setCanvasScale = (scale: number) => {
@@ -205,12 +225,18 @@ export const useEditorStore = defineStore('editor', () => {
   };
 
   const moveComponent = (id: string, targetParentId: string, targetIndex: number) => {
-    saveToHistory(); // 先保存当前状态到历史（修改前）
-
     const component = findComponentInTree(page.value.children, id);
     if (!component) return;
 
+    // 防止将容器拖入其自身或其后代中，避免循环引用
+    if (id === targetParentId || isDescendant(page.value.children, id, targetParentId)) {
+      return;
+    }
+
+    saveToHistory(); // 先保存当前状态到历史（修改前）
+
     // 结构共享移动：先删后插，逐层重建容器对象
+    // targetIndex 语义：组件在最终数组中期望的位置
     let newChildren = removeComponent(page.value.children, id);
 
     if (targetParentId === 'root') {
@@ -333,6 +359,8 @@ export const useEditorStore = defineStore('editor', () => {
     selectedIds,
     hoveredId,
     isDragging,
+    draggedComponentId,
+    draggedComponentType,
     canvasScale,
     canvasOffset,
     showGrid,
@@ -351,6 +379,9 @@ export const useEditorStore = defineStore('editor', () => {
     toggleSelection,
     setHoveredId,
     setDragging,
+    setDraggedComponentId,
+    setDraggedComponentType,
+    clearDragState,
     setCanvasScale,
     setCanvasOffset,
     toggleGrid,

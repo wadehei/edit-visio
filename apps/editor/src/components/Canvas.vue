@@ -58,8 +58,8 @@
         class="bg-white shadow-lg rounded-lg overflow-hidden transition-all duration-300 relative"
         :style="canvasStyles"
         @click="handleCanvasClick"
-        @dragover.prevent="handleDragOver"
-        @drop="handleDrop"
+        @dragover.prevent="handleCanvasDragOver"
+        @drop="handleCanvasDrop"
       >
         <!-- 网格背景 -->
         <div
@@ -98,29 +98,15 @@
 
           <div v-if="page.children.length > 0" class="space-y-2">
             <TransitionGroup name="list">
-              <div
+              <CanvasComponent
                 v-for="(component, index) in page.children"
                 :key="component.id"
-                class="relative group"
-                draggable="true"
-                @dragstart="handleComponentDragStart($event, component.id)"
-                @dragover.prevent="handleComponentDragOver($event, index)"
-                @drop.stop="handleComponentDrop($event, index)"
-                @dragend="handleComponentDragEnd"
-                @contextmenu.prevent="handleContextMenu($event, component.id)"
-              >
-                <div
-                  v-if="dragOverIndex === index && draggedComponentId"
-                  class="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 z-10"
-                >
-                  <div class="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                </div>
-
-                <CanvasComponent
-                  :component="component"
-                  :is-selected="selectedId === component.id"
-                />
-              </div>
+                :component="component"
+                :is-selected="selectedId === component.id"
+                :parent-id="'root'"
+                :index="index"
+                @contextmenu="(e) => handleContextMenu(e, component.id)"
+              />
             </TransitionGroup>
           </div>
         </div>
@@ -150,18 +136,15 @@ const { page, selectedId, canvasScale, canvasOffset, showGrid, snapToGrid, gridS
 const {
   setSelectedId,
   addComponent,
-  moveComponent,
-  setDragging,
   setCanvasScale,
   setCanvasOffset,
   toggleGrid,
   toggleSnapToGrid,
+  clearDragState,
 } = editorStore;
 
 const { currentDeviceConfig } = useDevicePreview();
 
-const draggedComponentId = ref<string | null>(null);
-const dragOverIndex = ref<number | null>(null);
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null);
 
 const handleContextMenu = (e: MouseEvent, componentId: string) => {
@@ -196,53 +179,32 @@ const handleCanvasClick = (e: MouseEvent) => {
   }
 };
 
-const handleDragOver = (e: DragEvent) => {
+/**
+ * 画布空白区域的 dragover：允许从组件面板拖入新组件追加到末尾
+ */
+const handleCanvasDragOver = (e: DragEvent) => {
   if (e.dataTransfer) {
     e.dataTransfer.dropEffect = 'copy';
   }
 };
 
-const handleDrop = (e: DragEvent) => {
+/**
+ * 画布空白区域的 drop：将新组件追加到根级末尾
+ * （组件之间的插入/重排由 CanvasComponent 自行处理）
+ */
+const handleCanvasDrop = (e: DragEvent) => {
   e.preventDefault();
-  const componentType = e.dataTransfer?.getData('componentType');
+
+  // 优先读取 store 中的拖拽类型（dragover 期间 dataTransfer.getData 不可用）
+  const componentType =
+    editorStore.draggedComponentType || e.dataTransfer?.getData('componentType');
 
   if (componentType) {
     const meta = getMeta(componentType);
     const index = page.value.children.length;
     addComponent(componentType, 'root', index, meta?.defaultProps || {}, meta?.defaultStyles || {});
-    setDragging(false);
   }
-};
-
-const handleComponentDragStart = (e: DragEvent, componentId: string) => {
-  draggedComponentId.value = componentId;
-  if (e.dataTransfer) {
-    e.dataTransfer.setData('componentId', componentId);
-    e.dataTransfer.effectAllowed = 'move';
-  }
-};
-
-const handleComponentDragOver = (e: DragEvent, index: number) => {
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'move';
-  }
-  dragOverIndex.value = index;
-};
-
-const handleComponentDrop = (e: DragEvent, targetIndex: number) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  if (draggedComponentId.value) {
-    moveComponent(draggedComponentId.value, 'root', targetIndex);
-    draggedComponentId.value = null;
-    dragOverIndex.value = null;
-  }
-};
-
-const handleComponentDragEnd = () => {
-  draggedComponentId.value = null;
-  dragOverIndex.value = null;
+  clearDragState();
 };
 </script>
 

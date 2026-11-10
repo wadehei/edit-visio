@@ -1,16 +1,40 @@
 <template>
   <div
-    class="relative transition-all duration-200 group"
+    class="relative group transition-all duration-200"
     :class="{
       'ring-2 ring-blue-500 shadow-md': isSelected && !component.locked,
       'ring-1 ring-blue-300': isHovered && !isSelected && !component.locked,
       'opacity-30': component.visible === false,
       'cursor-not-allowed': component.locked,
+      'ring-2 ring-blue-400 ring-offset-1': dragOverPosition === 'inside' && isContainer,
     }"
+    :draggable="!component.locked"
+    @dragstart="handleDragStart"
+    @dragover.prevent="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop.stop="handleDrop"
+    @dragend="handleDragEnd"
     @click.stop="handleClick"
     @mouseenter.stop="handleMouseEnter"
     @mouseleave="handleMouseLeave"
+    @contextmenu.prevent="$emit('contextmenu', $event)"
   >
+    <!-- 上方插入指示线 -->
+    <div
+      v-if="dragOverPosition === 'above'"
+      class="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 z-20 rounded-full"
+    >
+      <div class="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+    </div>
+
+    <!-- 下方插入指示线 -->
+    <div
+      v-if="dragOverPosition === 'below'"
+      class="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500 z-20 rounded-full"
+    >
+      <div class="absolute -left-1 -bottom-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+    </div>
+
     <!-- 锁定标记 -->
     <div
       v-if="component.locked"
@@ -28,31 +52,38 @@
     </div>
 
     <component :is="Component" v-if="Component" :schema="component">
-      <div
-        v-if="isContainer && component.children && component.children.length > 0"
-        class="space-y-2"
-      >
-        <CanvasComponent
-          v-for="child in component.children"
-          :key="child.id"
-          :component="child"
-          :is-selected="selectedId === child.id"
-        />
-      </div>
-      <div
-        v-else-if="isContainer"
-        class="flex flex-col items-center justify-center p-8 text-gray-400 text-xs border-2 border-dashed border-gray-300 rounded transition-colors hover:border-blue-400 hover:bg-blue-50"
-      >
-        <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+      <template v-if="isContainer">
+        <div v-if="component.children && component.children.length > 0" class="space-y-2">
+          <CanvasComponent
+            v-for="(child, childIndex) in component.children"
+            :key="child.id"
+            :component="child"
+            :is-selected="selectedId === child.id"
+            :parent-id="component.id"
+            :index="childIndex"
+            @contextmenu="(e) => $emit('contextmenu', e)"
           />
-        </svg>
-        <span>拖拽组件到此处</span>
-      </div>
+        </div>
+        <div
+          v-else
+          class="flex flex-col items-center justify-center p-8 text-gray-400 text-xs border-2 border-dashed border-gray-300 rounded transition-colors hover:border-blue-400 hover:bg-blue-50"
+          :class="{
+            'border-blue-400 bg-blue-50': dragOverPosition === 'inside',
+          }"
+          @dragover.prevent
+          @drop.stop="handleDrop"
+        >
+          <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            />
+          </svg>
+          <span>拖拽组件到此处</span>
+        </div>
+      </template>
     </component>
     <div v-else class="p-4 bg-red-100 text-red-600 text-sm">未知组件: {{ component.type }}</div>
 
@@ -75,21 +106,11 @@
         </button>
       </div>
     </Transition>
-
-    <!-- 容器拖拽区域 -->
-    <div
-      v-if="isContainer && isSelected"
-      class="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-50 rounded transition-opacity"
-      @dragover.prevent
-      @drop.stop="handleContainerDrop"
-    >
-      <span class="text-blue-600 text-sm font-medium">释放以添加到容器</span>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { ComponentSchema } from '@page-builder/shared';
 import { getComponentLabel, duplicateComponentTree } from '@page-builder/shared';
@@ -99,13 +120,23 @@ import { getComponent, getMeta, isContainerType } from '../registry/componentReg
 interface Props {
   component: ComponentSchema;
   isSelected: boolean;
+  parentId?: string;
+  index?: number;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  parentId: 'root',
+  index: 0,
+});
+
+defineEmits<{
+  (e: 'contextmenu', event: MouseEvent): void;
+}>();
 
 const editorStore = useEditorStore();
 // state：必须用 storeToRefs 保持响应性
-const { hoveredId, selectedId, page } = storeToRefs(editorStore);
+const { hoveredId, selectedId, draggedComponentId, draggedComponentType } =
+  storeToRefs(editorStore);
 // action：是稳定函数，直接从 store 实例解构
 const {
   setSelectedId,
@@ -114,21 +145,33 @@ const {
   deleteComponent,
   insertComponentTree,
   addComponent,
+  moveComponent,
+  setDraggedComponentId,
+  clearDragState,
 } = editorStore;
 
 const Component = computed(() => getComponent(props.component.type));
 const isContainer = computed(() => isContainerType(props.component.type));
 const isHovered = computed(() => hoveredId.value === props.component.id);
 
-const handleClick = (e: MouseEvent) => {
-  // 锁定的组件不可选中
-  if (props.component.locked) return;
+type DropPosition = 'above' | 'below' | 'inside' | null;
+const dragOverPosition = ref<DropPosition>(null);
 
+/**
+ * 拖拽结束时统一清除所有组件的落点指示状态
+ * （dragend 只在源组件上触发，目标组件的 dragOverPosition 需通过全局状态清除
+ */
+watch([draggedComponentId, draggedComponentType], ([id, type]) => {
+  if (!id && !type) {
+    dragOverPosition.value = null;
+  }
+});
+
+const handleClick = (e: MouseEvent) => {
+  if (props.component.locked) return;
   if (e.shiftKey) {
-    // Shift+Click: 切换多选
     toggleSelection(props.component.id);
   } else {
-    // 普通点击: 单选
     setSelectedId(props.component.id);
   }
 };
@@ -149,27 +192,119 @@ const handleDelete = () => {
 
 const handleDuplicate = () => {
   const newComponent = duplicateComponentTree(props.component);
-  const index = page.value.children.findIndex((c) => c.id === props.component.id);
-  // 使用 insertComponentTree 保留子组件结构（addComponent 会忽略 children）
-  insertComponentTree(newComponent, 'root', index + 1);
+  insertComponentTree(newComponent, props.parentId, props.index + 1);
 };
 
-const handleContainerDrop = (e: DragEvent) => {
+/**
+ * 拖拽开始：标记当前组件被拖动
+ */
+const handleDragStart = (e: DragEvent) => {
+  if (props.component.locked) {
+    e.preventDefault();
+    return;
+  }
+  setDraggedComponentId(props.component.id);
+  if (e.dataTransfer) {
+    e.dataTransfer.setData('componentId', props.component.id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+};
+
+/**
+ * 拖拽悬停：根据鼠标位置判断落点（上方/下方/容器内部）
+ */
+const handleDragOver = (e: DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = draggedComponentId.value ? 'move' : 'copy';
+  }
+
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const h = rect.height;
+
+  if (isContainer.value) {
+    // 容器：上下边缘为上方/下方插入，中间区域为放入容器内部
+    const edge = Math.min(12, h * 0.15);
+    if (y < edge) {
+      dragOverPosition.value = 'above';
+    } else if (y > h - edge) {
+      dragOverPosition.value = 'below';
+    } else {
+      dragOverPosition.value = 'inside';
+    }
+  } else {
+    // 非容器：上下半分
+    dragOverPosition.value = y < h / 2 ? 'above' : 'below';
+  }
+};
+
+const handleDragLeave = (e: DragEvent) => {
+  // 仅当鼠标真正离开当前元素时才清除（避免子元素触发的 dragleave 误清除
+  const related = e.relatedTarget as Node | null;
+  if (related && (e.currentTarget as HTMLElement).contains(related)) {
+    return;
+  }
+  dragOverPosition.value = null;
+};
+
+/**
+ * 释放：根据落点位置执行插入或移动
+ */
+const handleDrop = (e: DragEvent) => {
   e.preventDefault();
   e.stopPropagation();
 
-  const componentType = e.dataTransfer?.getData('componentType');
+  const position = dragOverPosition.value;
+  dragOverPosition.value = null;
+
+  if (!position) return;
+
+  // 计算目标父级与索引
+  let targetParentId: string;
+  let targetIndex: number;
+
+  if (position === 'inside' && isContainer.value) {
+    targetParentId = props.component.id;
+    targetIndex = props.component.children?.length || 0;
+  } else if (position === 'above') {
+    targetParentId = props.parentId;
+    targetIndex = props.index;
+  } else {
+    // 'below'
+    targetParentId = props.parentId;
+    targetIndex = props.index + 1;
+  }
+
+  // 已有组件：移动
+  if (draggedComponentId.value) {
+    // 防止移动到自身位置不处理（moveComponent 内部已做后代防护）
+    if (draggedComponentId.value !== props.component.id || position !== 'inside') {
+      moveComponent(draggedComponentId.value, targetParentId, targetIndex);
+    }
+    clearDragState();
+    return;
+  }
+
+  // 新组件：添加
+  const componentType = draggedComponentType.value || e.dataTransfer?.getData('componentType');
   if (componentType) {
     const meta = getMeta(componentType);
-    const index = props.component.children?.length || 0;
     addComponent(
       componentType,
-      props.component.id,
-      index,
+      targetParentId,
+      targetIndex,
       meta?.defaultProps || {},
       meta?.defaultStyles || {},
     );
+    clearDragState();
   }
+};
+
+const handleDragEnd = () => {
+  dragOverPosition.value = null;
+  clearDragState();
 };
 </script>
 

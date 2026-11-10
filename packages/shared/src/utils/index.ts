@@ -223,6 +223,47 @@ export function findComponentInTree(
 }
 
 /**
+ * 查找组件的父级 ID 及其在父级 children 中的索引
+ * @returns { parentId, index } 或 null（未找到）
+ */
+export function findComponentParentAndIndex(
+  components: import('../types').ComponentSchema[],
+  id: string,
+  parentId: string = 'root',
+): { parentId: string; index: number } | null {
+  for (let i = 0; i < components.length; i++) {
+    if (components[i].id === id) {
+      return { parentId, index: i };
+    }
+    if (components[i].children) {
+      const found = findComponentParentAndIndex(components[i].children!, id, components[i].id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * 判断 descendantId 是否是 ancestorId 的后代（包含自身）
+ * 用于防止将容器拖入其自身的子组件中，避免循环引用
+ */
+export function isDescendant(
+  components: import('../types').ComponentSchema[],
+  ancestorId: string,
+  descendantId: string,
+): boolean {
+  const ancestor = findComponentInTree(components, ancestorId);
+  if (!ancestor) return false;
+  if (ancestorId === descendantId) return true;
+  if (!ancestor.children) return false;
+  for (const child of ancestor.children) {
+    if (child.id === descendantId) return true;
+    if (isDescendant(ancestor.children, child.id, descendantId)) return true;
+  }
+  return false;
+}
+
+/**
  * 将页面对象保存为 JSON 文件下载
  */
 export function saveAsJSON(page: import('../types').PageSchema, filename?: string): void {
