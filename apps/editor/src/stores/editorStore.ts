@@ -235,8 +235,7 @@ export const useEditorStore = defineStore('editor', () => {
 
     saveToHistory(); // 先保存当前状态到历史（修改前）
 
-    // 结构共享移动：先删后插，逐层重建容器对象
-    // targetIndex 语义：组件在最终数组中期望的位置
+    // targetIndex 语义：组件在最终数组中的期望位置（调用方需考虑源组件删除后的索引偏移）
     let newChildren = removeComponent(page.value.children, id);
 
     if (targetParentId === 'root') {

@@ -260,6 +260,149 @@ describe('Canvas', () => {
   });
 });
 
+describe('CanvasComponent 拖拽落点分支', () => {
+  let pinia: Pinia;
+
+  beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mountCanvas() {
+    return mount(Canvas, {
+      global: {
+        plugins: [pinia],
+        stubs: { DeviceSwitcher: true, ContextMenu: ContextMenuStub },
+      },
+    });
+  }
+
+  /** 固定元素尺寸，使 clientY 能稳定命中「上方 / 下方」落点区域（jsdom 默认 rect 全为 0） */
+  function stubRect(height = 100) {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      left: 0,
+      bottom: height,
+      right: 100,
+      width: 100,
+      height,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+  }
+
+  function makeDataTransfer() {
+    return { setData: vi.fn(), getData: vi.fn(), effectAllowed: '', dropEffect: '' };
+  }
+
+  it('已有组件拖到目标上方且源在目标之后时前移', async () => {
+    const store = useEditorStore();
+    store.setPage({ ...store.page, children: [makeSchema('a'), makeSchema('b')] });
+    const wrapper = mountCanvas();
+    await nextTick();
+    stubRect();
+
+    const items = wrapper.findAll('[draggable="true"]');
+    const dataTransfer = makeDataTransfer();
+    await items[1].trigger('dragstart', { dataTransfer }); // 拖 b（源在目标之后）
+    await items[0].trigger('dragover', { dataTransfer, clientY: 10 }); // a 上方
+    await items[0].trigger('drop', { dataTransfer });
+
+    expect(store.page.children.map((c) => c.id)).toEqual(['b', 'a']);
+  });
+
+  it('已有组件拖到目标下方且源在目标之前时后移', async () => {
+    const store = useEditorStore();
+    store.setPage({ ...store.page, children: [makeSchema('a'), makeSchema('b')] });
+    const wrapper = mountCanvas();
+    await nextTick();
+    stubRect();
+
+    const items = wrapper.findAll('[draggable="true"]');
+    const dataTransfer = makeDataTransfer();
+    await items[0].trigger('dragstart', { dataTransfer }); // 拖 a（源在目标之前）
+    await items[1].trigger('dragover', { dataTransfer, clientY: 90 }); // b 下方
+    await items[1].trigger('drop', { dataTransfer });
+
+    expect(store.page.children.map((c) => c.id)).toEqual(['b', 'a']);
+  });
+
+  it('已有组件拖到紧邻下一项上方（源在目标之前）时保持原位', async () => {
+    const store = useEditorStore();
+    store.setPage({ ...store.page, children: [makeSchema('a'), makeSchema('b')] });
+    const wrapper = mountCanvas();
+    await nextTick();
+    stubRect();
+
+    const items = wrapper.findAll('[draggable="true"]');
+    const dataTransfer = makeDataTransfer();
+    await items[0].trigger('dragstart', { dataTransfer }); // 拖 a
+    await items[1].trigger('dragover', { dataTransfer, clientY: 10 }); // b 上方（源在目标之前，索引左移补偿）
+    await items[1].trigger('drop', { dataTransfer });
+
+    expect(store.page.children.map((c) => c.id)).toEqual(['a', 'b']);
+  });
+
+  it('新组件拖到目标项上方时插入到该项之前', async () => {
+    const store = useEditorStore();
+    store.setPage({ ...store.page, children: [makeSchema('a'), makeSchema('b')] });
+    const wrapper = mountCanvas();
+    await nextTick();
+    stubRect();
+    store.setDraggedComponentType('button');
+
+    const items = wrapper.findAll('[draggable="true"]');
+    const dataTransfer = makeDataTransfer();
+    await items[1].trigger('dragover', { dataTransfer, clientY: 10 }); // b 上方
+    await items[1].trigger('drop', { dataTransfer });
+
+    expect(store.page.children.map((c) => c.type)).toEqual(['text', 'button', 'text']);
+  });
+
+  it('新组件拖到目标项下方时插入到该项之后', async () => {
+    const store = useEditorStore();
+    store.setPage({ ...store.page, children: [makeSchema('a'), makeSchema('b')] });
+    const wrapper = mountCanvas();
+    await nextTick();
+    stubRect();
+    store.setDraggedComponentType('button');
+
+    const items = wrapper.findAll('[draggable="true"]');
+    const dataTransfer = makeDataTransfer();
+    await items[0].trigger('dragover', { dataTransfer, clientY: 90 }); // a 下方
+    await items[0].trigger('drop', { dataTransfer });
+
+    expect(store.page.children.map((c) => c.type)).toEqual(['text', 'button', 'text']);
+  });
+
+  it('dragleave 指向内部元素时不落点指示，指向外部时清除', async () => {
+    const store = useEditorStore();
+    store.setPage({ ...store.page, children: [makeSchema('a')] });
+    const wrapper = mountCanvas();
+    await nextTick();
+    stubRect();
+
+    const item = wrapper.find('[draggable="true"]');
+    const dataTransfer = makeDataTransfer();
+    await item.trigger('dragstart', { dataTransfer });
+    await item.trigger('dragover', { dataTransfer, clientY: 10 });
+    expect(wrapper.find('.bg-blue-500').exists()).toBe(true);
+
+    // 相关目标仍在该元素内部：保留落点指示
+    await item.trigger('dragleave', { relatedTarget: item.element });
+    expect(wrapper.find('.bg-blue-500').exists()).toBe(true);
+
+    // 相关目标为空（真正离开）：清除落点指示
+    await item.trigger('dragleave', { relatedTarget: null });
+    expect(wrapper.find('.bg-blue-500').exists()).toBe(false);
+  });
+});
+
 describe('CanvasComponent', () => {
   let pinia: Pinia;
 

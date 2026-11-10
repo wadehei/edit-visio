@@ -113,7 +113,11 @@
 import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { ComponentSchema } from '@page-builder/shared';
-import { getComponentLabel, duplicateComponentTree } from '@page-builder/shared';
+import {
+  getComponentLabel,
+  duplicateComponentTree,
+  findComponentParentAndIndex,
+} from '@page-builder/shared';
 import { useEditorStore } from '../stores/editorStore';
 import { getComponent, getMeta, isContainerType } from '../registry/componentRegistry';
 
@@ -261,20 +265,38 @@ const handleDrop = (e: DragEvent) => {
 
   if (!position) return;
 
-  // 计算目标父级与索引
+  // 计算目标父级与最终索引
+  // targetIndex 语义：组件在最终数组中的期望位置
   let targetParentId: string;
   let targetIndex: number;
 
   if (position === 'inside' && isContainer.value) {
     targetParentId = props.component.id;
     targetIndex = props.component.children?.length || 0;
-  } else if (position === 'above') {
-    targetParentId = props.parentId;
-    targetIndex = props.index;
   } else {
-    // 'below'
     targetParentId = props.parentId;
-    targetIndex = props.index + 1;
+    const targetCompIndex = props.index;
+
+    if (draggedComponentId.value) {
+      // 已有组件移动：需考虑源组件删除后目标索引的偏移
+      // 若源与目标在同一父级且源在目标之前，删除源会使目标索引左移 1 位
+      const sourcePos = findComponentParentAndIndex(
+        editorStore.page.children,
+        draggedComponentId.value,
+      );
+      const sourceBeforeTarget =
+        sourcePos && sourcePos.parentId === targetParentId && sourcePos.index < targetCompIndex;
+
+      if (position === 'above') {
+        targetIndex = sourceBeforeTarget ? targetCompIndex - 1 : targetCompIndex;
+      } else {
+        // 'below'
+        targetIndex = sourceBeforeTarget ? targetCompIndex : targetCompIndex + 1;
+      }
+    } else {
+      // 新组件添加：不涉及删除，直接用目标位置
+      targetIndex = position === 'above' ? targetCompIndex : targetCompIndex + 1;
+    }
   }
 
   // 已有组件：移动
