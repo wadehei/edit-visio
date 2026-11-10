@@ -2,6 +2,13 @@ import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axio
 import { useAuthStore } from '../stores/authStore';
 import { logger } from '../utils/logger';
 
+/** 判断是否为请求超时（axios 以 ECONNABORTED / ETIMEDOUT 标记超时） */
+function isTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: string }).code;
+  return code === 'ECONNABORTED' || code === 'ETIMEDOUT';
+}
+
 // 统一响应结构
 export interface ApiResponse<T = unknown> {
   code: number;
@@ -115,8 +122,11 @@ request.interceptors.response.use(
       }
     }
 
-    // 非 401 错误：提取业务错误信息
-    const message = error?.response?.data?.message || error?.message || '网络错误';
+    // 非 401 错误：提取业务错误信息。
+    // 超时错误（如 "timeout of 15000ms exceeded"）对用户不可读，统一转换为中文提示。
+    const message = isTimeoutError(error)
+      ? '请求超时，请检查网络后重试'
+      : error?.response?.data?.message || error?.message || '网络错误';
     return Promise.reject(new Error(message));
   },
 );

@@ -453,6 +453,45 @@ describe('request 非 401 错误信息提取', () => {
 
     await expect(request.get('/x')).rejects.toThrow('network down');
   });
+
+  it('超时错误（ECONNABORTED）应转换为中文提示，而非暴露英文原始消息', async () => {
+    request.defaults.adapter = (config) => {
+      const error = new Error('timeout of 15000ms exceeded') as Error & {
+        config?: unknown;
+        code: string;
+      };
+      error.config = config;
+      error.code = 'ECONNABORTED';
+      return Promise.reject(error);
+    };
+
+    await expect(request.get('/x')).rejects.toThrow('请求超时，请检查网络后重试');
+  });
+
+  it('超时错误（ETIMEDOUT）同样转换为中文提示', async () => {
+    request.defaults.adapter = (config) => {
+      const error = new Error('timeout of 15000ms exceeded') as Error & {
+        config?: unknown;
+        code: string;
+      };
+      error.config = config;
+      error.code = 'ETIMEDOUT';
+      return Promise.reject(error);
+    };
+
+    await expect(request.get('/x')).rejects.toThrow('请求超时，请检查网络后重试');
+  });
+
+  it('非超时 code 时仍走原始 message 提取分支', async () => {
+    request.defaults.adapter = (config) => {
+      const error = new Error('some other error') as Error & { config?: unknown; code: string };
+      error.config = config;
+      error.code = 'ERR_BAD_REQUEST';
+      return Promise.reject(error);
+    };
+
+    await expect(request.get('/x')).rejects.toThrow('some other error');
+  });
 });
 
 describe('request 响应拦截器在缺失 config 的错误对象下的健壮性', () => {
