@@ -20,6 +20,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/EditorPage.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    // 预览页在新标签打开，仅从 localStorage 读取快照渲染，无需登录
+    path: '/preview',
+    name: 'Preview',
+    component: () => import('../views/PreviewPage.vue'),
+    meta: { requiresAuth: false },
+  },
 ];
 
 const router = createRouter({

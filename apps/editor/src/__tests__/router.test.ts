@@ -19,6 +19,7 @@ function stubView(name: string) {
 vi.mock('../views/LoginPage.vue', stubView('LoginPage'));
 vi.mock('../views/HomePage.vue', stubView('HomePage'));
 vi.mock('../views/EditorPage.vue', stubView('EditorPage'));
+vi.mock('../views/PreviewPage.vue', stubView('PreviewPage'));
 
 /** 每个用例使用全新的 router 实例，避免复用已导航状态 */
 async function freshRouter() {
@@ -67,5 +68,13 @@ describe('router 守卫', () => {
     await router.push('/login');
 
     expect(router.currentRoute.value.name).toBe('Login');
+  });
+
+  it('未登录访问预览页时不跳转登录（公开路由）', async () => {
+    const router = await freshRouter();
+
+    await router.push('/preview');
+
+    expect(router.currentRoute.value.name).toBe('Preview');
   });
 });
