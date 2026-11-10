@@ -86,6 +86,20 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        configure: (proxy) => {
+          // 后端有 CORS 白名单拦截器，代理转发时移除浏览器 Origin 头，
+          // 使后端将请求视为同源内部调用，避免 403 Invalid CORS request。
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
+      },
+    },
   },
   build: {
     target: 'es2022',
