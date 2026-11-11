@@ -78,21 +78,25 @@
               v-if="page.children.length === 0"
               class="flex flex-col items-center justify-center h-64 text-gray-400"
             >
-              <svg
-                class="w-16 h-16 mb-4 text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              <p class="text-sm">从左侧拖拽组件到此处</p>
-              <p class="text-xs mt-2 text-gray-300">或使用模板快速开始</p>
+              <div class="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+                <LayoutTemplate :size="30" class="text-gray-300" />
+              </div>
+              <p class="text-sm text-gray-500 font-medium">从左侧拖拽组件到此处</p>
+              <p class="text-xs mt-2 text-gray-300">或点击工具栏「使用模板」快速开始</p>
+              <div class="flex items-center gap-4 mt-5 text-[11px] text-gray-400">
+                <span class="flex items-center gap-1">
+                  <MousePointerClick :size="12" />
+                  拖拽添加
+                </span>
+                <span class="flex items-center gap-1">
+                  <Layers :size="12" />
+                  图层调整
+                </span>
+                <span class="flex items-center gap-1">
+                  <Eye :size="12" />
+                  实时预览
+                </span>
+              </div>
             </div>
           </Transition>
 
@@ -121,6 +125,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { storeToRefs } from 'pinia';
+import { Eye, Layers, LayoutTemplate, MousePointerClick } from 'lucide-vue-next';
 import { useEditorStore } from '../stores/editorStore';
 import { useDevicePreview } from '../composables/useDevicePreview';
 import CanvasComponent from './CanvasComponent.vue';

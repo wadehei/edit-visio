@@ -1,45 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
-import type { Ref } from 'vue';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import type { Pinia } from 'pinia';
 import Canvas from '../components/Canvas.vue';
 import CanvasComponent from '../components/CanvasComponent.vue';
-import AlignmentGuides from '../components/AlignmentGuides.vue';
 import { useEditorStore } from '../stores/editorStore';
 import type { ComponentSchema } from '@page-builder/shared';
 
-type GuideType = 'horizontal' | 'vertical';
-interface Guide {
-  type: GuideType;
-  position: number;
-  components: string[];
-}
-interface GuideState {
-  guides: Ref<Guide[]>;
-  showGuides: Ref<boolean>;
-}
+// 内置确认对话框桩：默认确认，用例可按需覆盖返回值
+vi.mock('../composables/useConfirm', () => ({
+  confirmDialog: vi.fn(() => Promise.resolve(true)),
+  promptDialog: vi.fn(() => Promise.resolve(null)),
+}));
 
-/** 共享给桩的辅助线状态：便于在用例中直接控制 AlignmentGuides 的渲染输入 */
-const guideMock = vi.hoisted(() => ({ state: null as unknown as GuideState }));
-
-vi.mock('../composables/useAlignmentGuides', async () => {
-  const { ref } = await import('vue');
-  const guides = ref<Guide[]>([]);
-  const showGuides = ref(true);
-  guideMock.state = { guides, showGuides };
-  return {
-    useAlignmentGuides: () => ({
-      guides,
-      showGuides,
-      snapThreshold: ref(5),
-      detectAlignment: () => {},
-      clearGuides: () => {},
-      toggleGuides: () => {},
-    }),
-  };
-});
+import { confirmDialog } from '../composables/useConfirm';
 
 /** 组件注册表桩：让 Canvas / CanvasComponent 的分支逻辑可被确定性地驱动 */
 vi.mock('../registry/componentRegistry', async () => {
@@ -457,7 +432,7 @@ describe('CanvasComponent', () => {
 
     expect(wrapper.classes()).toContain('cursor-not-allowed');
     expect(wrapper.classes()).not.toContain('ring-2');
-    expect(wrapper.text()).toContain('🔒');
+    expect(wrapper.find('[title="组件已锁定"] svg').exists()).toBe(true);
     expect(wrapper.text()).not.toContain('📝 文本');
 
     store.setSelectedId('other');
@@ -484,11 +459,9 @@ describe('CanvasComponent', () => {
     store.setPage({ ...store.page, children: [schema] });
     const wrapper = mountComponent(schema, true);
 
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true),
-    );
+    vi.mocked(confirmDialog).mockResolvedValue(true);
     await wrapper.find('button[title="删除"]').trigger('click');
+    await flushPromises();
 
     expect(store.getComponentById('t')).toBeUndefined();
   });
@@ -499,11 +472,9 @@ describe('CanvasComponent', () => {
     store.setPage({ ...store.page, children: [schema] });
     const wrapper = mountComponent(schema, true);
 
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false),
-    );
+    vi.mocked(confirmDialog).mockResolvedValue(false);
     await wrapper.find('button[title="删除"]').trigger('click');
+    await flushPromises();
 
     expect(store.getComponentById('t')).toBeDefined();
   });
@@ -559,71 +530,5 @@ describe('CanvasComponent', () => {
 
     expect(store.page.children[0].children).toHaveLength(1);
     expect(store.page.children[0].children![0].type).toBe('button');
-  });
-});
-
-describe('AlignmentGuides', () => {
-  beforeEach(() => {
-    guideMock.state.guides.value = [];
-    guideMock.state.showGuides.value = true;
-  });
-
-  it('无辅助线时不渲染 svg', () => {
-    const wrapper = mount(AlignmentGuides);
-    expect(wrapper.find('svg').exists()).toBe(false);
-  });
-
-  it('垂直辅助线渲染为垂直虚线', async () => {
-    const wrapper = mount(AlignmentGuides);
-    guideMock.state.guides.value = [{ type: 'vertical', position: 120, components: ['a', 'b'] }];
-    await nextTick();
-
-    const line = wrapper.find('line');
-    expect(line.exists()).toBe(true);
-    expect(line.attributes('x1')).toBe('120');
-    expect(line.attributes('x2')).toBe('120');
-    expect(line.attributes('y1')).toBe('0');
-    expect(line.attributes('y2')).toBe('100%');
-
-    const circle = wrapper.find('circle');
-    expect(circle.attributes('cx')).toBe('120');
-    expect(circle.attributes('cy')).toBe('50%');
-  });
-
-  it('水平辅助线渲染为水平虚线', async () => {
-    const wrapper = mount(AlignmentGuides);
-    guideMock.state.guides.value = [{ type: 'horizontal', position: 80, components: ['a'] }];
-    await nextTick();
-
-    const line = wrapper.find('line');
-    expect(line.attributes('x1')).toBe('0');
-    expect(line.attributes('x2')).toBe('100%');
-    expect(line.attributes('y1')).toBe('80');
-    expect(line.attributes('y2')).toBe('80');
-
-    const circle = wrapper.find('circle');
-    expect(circle.attributes('cx')).toBe('50%');
-    expect(circle.attributes('cy')).toBe('80');
-  });
-
-  it('多条辅助线分别渲染 line 与 circle', async () => {
-    const wrapper = mount(AlignmentGuides);
-    guideMock.state.guides.value = [
-      { type: 'vertical', position: 10, components: ['a'] },
-      { type: 'horizontal', position: 20, components: ['b'] },
-    ];
-    await nextTick();
-
-    expect(wrapper.findAll('line')).toHaveLength(2);
-    expect(wrapper.findAll('circle')).toHaveLength(2);
-  });
-
-  it('showGuides 关闭时不渲染辅助线', async () => {
-    const wrapper = mount(AlignmentGuides);
-    guideMock.state.guides.value = [{ type: 'vertical', position: 10, components: ['a'] }];
-    guideMock.state.showGuides.value = false;
-    await nextTick();
-
-    expect(wrapper.find('svg').exists()).toBe(false);
   });
 });

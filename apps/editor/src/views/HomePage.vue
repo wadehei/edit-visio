@@ -228,6 +228,28 @@
           </div>
         </div>
       </div>
+
+      <!-- 分页控件 -->
+      <div
+        v-if="!loading && projects.length && totalPages > 1"
+        class="flex items-center justify-center gap-3 mt-10"
+      >
+        <button
+          class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-200"
+          :disabled="currentPage <= 1"
+          @click="goToPage(currentPage - 1)"
+        >
+          上一页
+        </button>
+        <span class="text-sm text-gray-500"> 第 {{ currentPage }} / {{ totalPages }} 页 </span>
+        <button
+          class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-200"
+          :disabled="currentPage >= totalPages"
+          @click="goToPage(currentPage + 1)"
+        >
+          下一页
+        </button>
+      </div>
     </main>
 
     <!-- 新建项目弹窗 -->
@@ -304,23 +326,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/authStore';
 import * as projectApi from '../api/project';
 import type { Project } from '../api/project';
 import { toast } from '../utils/toast';
 import { logger } from '../utils/logger';
+import { confirmDialog, promptDialog } from '../composables/useConfirm';
+
+/** 首页每页项目数（3 列网格 × 4 行） */
+const PAGE_SIZE = 12;
 
 const router = useRouter();
 const authStore = useAuthStore();
 
 const loading = ref(true);
 const projects = ref<Project[]>([]);
+const currentPage = ref(1);
+const total = ref(0);
 const showCreateDialog = ref(false);
 const newProjectName = ref('');
 const newProjectDesc = ref('');
 const creating = ref(false);
+
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)));
 
 onMounted(async () => {
   await loadProjects();
@@ -329,14 +359,25 @@ onMounted(async () => {
 async function loadProjects() {
   loading.value = true;
   try {
-    const { data } = await projectApi.getProjects({ page: 1, pageSize: 50 });
+    const { data } = await projectApi.getProjects({
+      page: currentPage.value,
+      pageSize: PAGE_SIZE,
+    });
     projects.value = data.data.list;
+    // 后端分页元信息缺失时回退为当前页条数，保证控件可用
+    total.value = data.data.pagination?.total ?? data.data.list.length;
   } catch (err: unknown) {
     const error = err as Error;
     logger.error('HomePage', '加载项目失败', error);
   } finally {
     loading.value = false;
   }
+}
+
+function goToPage(page: number) {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return;
+  currentPage.value = page;
+  void loadProjects();
 }
 
 function openProject(project: Project) {
@@ -364,7 +405,13 @@ async function handleCreateProject() {
 }
 
 async function handleDeleteProject(project: Project) {
-  if (!confirm(`确定删除项目「${project.name}」？`)) return;
+  const ok = await confirmDialog({
+    title: '删除项目',
+    message: `确定删除项目「${project.name}」？此操作不可恢复。`,
+    confirmText: '删除',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await projectApi.deleteProject(String(project.projectId));
     await loadProjects();
@@ -374,10 +421,21 @@ async function handleDeleteProject(project: Project) {
   }
 }
 
-function renameProject(project: Project) {
-  const name = prompt('新名称:', project.name);
+async function renameProject(project: Project) {
+  const name = await promptDialog({
+    title: '重命名项目',
+    message: '请输入新的项目名称',
+    defaultValue: project.name,
+    confirmText: '保存',
+  });
   if (!name || name === project.name) return;
-  void projectApi.updateProject(String(project.projectId), { name }).then(() => loadProjects());
+  try {
+    await projectApi.updateProject(String(project.projectId), { name });
+    await loadProjects();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '未知错误';
+    toast('重命名失败: ' + msg, 'error');
+  }
 }
 
 async function handleLogout() {

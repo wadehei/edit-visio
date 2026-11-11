@@ -14,7 +14,7 @@ import {
 } from '@page-builder/shared';
 
 /** 最大历史步数（超过后丢弃最早的记录） */
-const MAX_HISTORY_SIZE = 20;
+export const MAX_HISTORY_SIZE = 50;
 
 /** 历史快照条目：组件树快照 + 记录时刻（供历史面板展示时间） */
 export interface HistoryEntry {

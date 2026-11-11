@@ -31,6 +31,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useTemplates } from '../composables/useAutoSave';
+import { confirmDialog } from '../composables/useConfirm';
 
 const { templates, applyTemplate } = useTemplates();
 
@@ -44,8 +45,13 @@ const closeModal = () => {
   showModal.value = false;
 };
 
-const selectTemplate = (templateId: string) => {
-  if (confirm('应用模板会覆盖当前页面内容，确定继续吗？')) {
+const selectTemplate = async (templateId: string) => {
+  const ok = await confirmDialog({
+    title: '应用模板',
+    message: '应用模板会覆盖当前页面内容，确定继续吗？',
+    confirmText: '继续',
+  });
+  if (ok) {
     applyTemplate(templateId);
     closeModal();
   }

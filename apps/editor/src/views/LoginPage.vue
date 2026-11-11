@@ -256,9 +256,10 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/authStore';
 
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
@@ -304,7 +305,9 @@ async function handleSubmit() {
     } else {
       await authStore.register(form.username, form.password, form.email || undefined);
     }
-    await router.push('/');
+    // 登录成功后回到被拦截的原页面（路由守卫写入的 redirect），否则回首页
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
+    await router.push(redirect);
   } catch (err: unknown) {
     const error = err as Error;
     errorMsg.value = error.message || '操作失败，请重试';

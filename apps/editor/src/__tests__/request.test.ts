@@ -277,8 +277,8 @@ describe('request 实例默认配置', () => {
     vi.unstubAllEnvs();
   });
 
-  it('默认超时 15s 且携带凭证', () => {
-    expect(request.defaults.timeout).toBe(15_000);
+  it('默认超时 35s 且携带凭证', () => {
+    expect(request.defaults.timeout).toBe(35_000);
     expect(request.defaults.withCredentials).toBe(true);
   });
 
@@ -290,7 +290,7 @@ describe('request 实例默认配置', () => {
     const mod = await import('../api/request');
 
     expect(mod.default.defaults.baseURL).toBe('https://api.example.com');
-    expect(mod.default.defaults.timeout).toBe(15_000);
+    expect(mod.default.defaults.timeout).toBe(35_000);
     expect(mod.default.defaults.withCredentials).toBe(true);
     expect(loggerError).not.toHaveBeenCalled();
   });

@@ -14,7 +14,7 @@ import { useEditorStore } from '../stores/editorStore';
  */
 
 /** 历史栈上限，需与 editorStore 中 MAX_HISTORY_SIZE 保持一致 */
-const MAX_HISTORY_SIZE = 20;
+const MAX_HISTORY_SIZE = 50;
 
 /** 用 JSON 序列化做确定性深比较（页面为纯数据，不含函数/循环引用） */
 const stable = (value: unknown): string => JSON.stringify(value);

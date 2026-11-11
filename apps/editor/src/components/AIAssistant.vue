@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { Sparkles } from 'lucide-vue-next';
 import { useAIAssistant } from '../composables/useAIAssistant';
 
@@ -105,6 +105,7 @@ const handleClickOutside = (e: MouseEvent) => {
 };
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('click', handleClickOutside);
+  onMounted(() => window.addEventListener('click', handleClickOutside));
+  onUnmounted(() => window.removeEventListener('click', handleClickOutside));
 }
 </script>

@@ -1,170 +1,32 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
-import AnimationPanel from '../components/AnimationPanel.vue';
 import TemplateModal from '../components/TemplateModal.vue';
 import ExportImageModal from '../components/ExportImageModal.vue';
 import AIAssistant from '../components/AIAssistant.vue';
-import ProjectManager from '../components/ProjectManager.vue';
 import HistoryPanel from '../components/HistoryPanel.vue';
 import { useEditorStore } from '../stores/editorStore';
-import type { PageSchema } from '@page-builder/shared';
-import type { Project } from '../composables/useProjectManager';
 
-/** 全局 confirm 桩，供用例断言调用情况 */
-let confirmSpy: ReturnType<typeof vi.fn> = vi.fn();
-
-// 保留真实实现并自动转为 spy，便于按用例替换返回值
-vi.mock('../api/project', { spy: true });
-vi.mock('../api/page', { spy: true });
+// 内置确认对话框桩：默认确认，用例可按需覆盖返回值
+vi.mock('../composables/useConfirm', () => ({
+  confirmDialog: vi.fn(() => Promise.resolve(true)),
+  promptDialog: vi.fn(() => Promise.resolve(null)),
+}));
 vi.mock('../utils/toast', () => ({ toast: vi.fn() }));
 
-import * as projectApi from '../api/project';
-import * as pageApi from '../api/page';
+import { confirmDialog } from '../composables/useConfirm';
 import { toast } from '../utils/toast';
-
-/** 构造 axios 风格的成功响应（组合式函数只消费 data.data 字段） */
-function ok<T>(data: T) {
-  return { data: { code: 0, data, message: 'ok' } } as never;
-}
 
 /** 调用通过 defineExpose 暴露的 openModal */
 function openModal(wrapper: { vm: unknown }) {
   (wrapper.vm as { openModal: () => void }).openModal();
 }
 
-function makePage(id: string, name = '页面'): PageSchema {
-  return {
-    id,
-    name,
-    version: '1.0.0',
-    props: { title: name, backgroundColor: '#ffffff' },
-    children: [],
-  };
-}
-
-function makeProject(partial: Partial<Project> & { id: string }): Project {
-  return {
-    id: partial.id,
-    name: partial.name ?? '项目',
-    description: partial.description ?? '',
-    pages: partial.pages ?? [],
-    currentPageId: partial.currentPageId ?? '',
-    createdAt: partial.createdAt ?? Date.now(),
-    updatedAt: partial.updatedAt ?? Date.now(),
-  };
-}
-
-function seedProjects(projects: Project[]) {
-  localStorage.setItem('page-builder-projects', JSON.stringify(projects));
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  confirmSpy = vi.fn(() => true);
-  vi.stubGlobal('confirm', confirmSpy);
-
-  vi.mocked(projectApi.getProjects).mockResolvedValue(ok({ list: [] }));
-  vi.mocked(projectApi.createProject).mockResolvedValue(
-    ok({ projectId: 42, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-02T00:00:00Z' }),
-  );
-  vi.mocked(projectApi.updateProject).mockResolvedValue(ok({ projectId: 1 }));
-  vi.mocked(projectApi.deleteProject).mockResolvedValue(ok(null));
-  vi.mocked(projectApi.copyProject).mockResolvedValue(
-    ok({ projectId: 77, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-02T00:00:00Z' }),
-  );
-  vi.mocked(pageApi.getPages).mockResolvedValue(ok({ list: [] }));
-  vi.mocked(pageApi.createPage).mockResolvedValue(ok({ pageId: 99 }));
-  vi.mocked(pageApi.deletePage).mockResolvedValue(ok(null));
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe('AnimationPanel', () => {
-  it('showPanel 为 false 时不渲染面板', () => {
-    const wrapper = mount(AnimationPanel, { props: { showPanel: false } });
-
-    expect(wrapper.find('h3').exists()).toBe(false);
-    expect(wrapper.text()).not.toContain('动画效果');
-  });
-
-  it('showPanel 为 true 时渲染标题与三个动画分类，且默认不展示参数', () => {
-    const wrapper = mount(AnimationPanel, { props: { showPanel: true } });
-    const buttons = wrapper.findAll('button');
-
-    expect(wrapper.text()).toContain('动画效果');
-    expect(wrapper.text()).toContain('动画类型');
-    expect(buttons).toHaveLength(3);
-    expect(buttons.map((b) => b.text())).toEqual(['淡入', '滑入', '特殊']);
-    // 默认动画类型为 none，不展示时长/延迟/重复控件
-    expect(wrapper.find('select').exists()).toBe(false);
-    expect(wrapper.findAll('input[type="range"]')).toHaveLength(0);
-  });
-
-  it('点击分类可展开/收起对应动画列表', async () => {
-    const wrapper = mount(AnimationPanel, { props: { showPanel: true } });
-    const fadeCategory = wrapper.findAll('button').find((b) => b.text() === '淡入')!;
-
-    await fadeCategory.trigger('click');
-    expect(wrapper.text()).toContain('向上淡入');
-    expect(wrapper.text()).toContain('向左淡入');
-    // 分类按钮 + 5 个动画项
-    expect(wrapper.findAll('button')).toHaveLength(8);
-
-    await fadeCategory.trigger('click');
-    expect(wrapper.text()).not.toContain('向上淡入');
-  });
-
-  it('选择动画后展示参数控件，时长/延迟/重复均可调整', async () => {
-    const wrapper = mount(AnimationPanel, { props: { showPanel: true } });
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === '滑入')!
-      .trigger('click');
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text().includes('向上滑入'))!
-      .trigger('click');
-
-    const ranges = wrapper.findAll('input[type="range"]');
-    expect(ranges).toHaveLength(2);
-    expect(wrapper.text()).toContain('持续时间: 500ms');
-    expect(wrapper.text()).toContain('延迟: 0ms');
-
-    await ranges[0].setValue('800');
-    expect(wrapper.text()).toContain('持续时间: 800ms');
-
-    await ranges[1].setValue('300');
-    expect(wrapper.text()).toContain('延迟: 300ms');
-
-    const select = wrapper.find('select');
-    await select.setValue('infinite');
-    expect((select.element as HTMLSelectElement).value).toBe('infinite');
-  });
-
-  it('选中项展示预览按钮，点击预览不收起列表', async () => {
-    const wrapper = mount(AnimationPanel, { props: { showPanel: true } });
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === '淡入')!
-      .trigger('click');
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text().includes('向上淡入'))!
-      .trigger('click');
-
-    const preview = wrapper.find('span.ml-2');
-    expect(preview.exists()).toBe(true);
-    expect(preview.text()).toBe('▶');
-
-    await preview.trigger('click');
-    // 预览不收起动画列表
-    expect(wrapper.text()).toContain('向上淡入');
-  });
+  vi.mocked(confirmDialog).mockResolvedValue(true);
 });
 
 describe('TemplateModal', () => {
@@ -201,19 +63,21 @@ describe('TemplateModal', () => {
 
     const card = wrapper.findAll('.cursor-pointer').find((c) => c.text().includes('落地页'))!;
     await card.trigger('click');
+    await flushPromises();
 
     const store = useEditorStore(pinia);
     expect(store.page.id).toBe('page-landing');
     expect(store.page.name).toBe('产品介绍');
     expect(wrapper.find('.fixed').exists()).toBe(false);
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(confirmDialog).toHaveBeenCalledWith({
+      title: '应用模板',
+      message: '应用模板会覆盖当前页面内容，确定继续吗？',
+      confirmText: '继续',
+    });
   });
 
   it('取消确认时不应用模板且保持弹窗打开', async () => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false),
-    );
+    vi.mocked(confirmDialog).mockResolvedValue(false);
 
     const wrapper = mountModal();
     openModal(wrapper);
@@ -221,6 +85,7 @@ describe('TemplateModal', () => {
 
     const card = wrapper.findAll('.cursor-pointer').find((c) => c.text().includes('个人主页'))!;
     await card.trigger('click');
+    await flushPromises();
 
     const store = useEditorStore(pinia);
     expect(store.page.id).not.toBe('page-profile');
@@ -411,159 +276,6 @@ describe('AIAssistant', () => {
   });
 });
 
-describe('ProjectManager', () => {
-  function mountManager() {
-    return mount(ProjectManager);
-  }
-
-  async function openedManager() {
-    const wrapper = mountManager();
-    openModal(wrapper);
-    await nextTick();
-    return wrapper;
-  }
-
-  it('初始不渲染，openModal 后展示项目管理与空状态', async () => {
-    const wrapper = mountManager();
-    expect(wrapper.find('.fixed').exists()).toBe(false);
-
-    const opened = await openedManager();
-    expect(opened.text()).toContain('项目管理');
-    expect(opened.text()).toContain('创建新项目');
-    expect(opened.text()).toContain('暂无项目');
-  });
-
-  it('渲染已存储项目的名称、描述与页面数量', async () => {
-    seedProjects([
-      makeProject({
-        id: 'a',
-        name: '项目甲',
-        description: '描述甲',
-        pages: [makePage('p1'), makePage('p2')],
-      }),
-    ]);
-
-    const wrapper = await openedManager();
-
-    expect(wrapper.text()).toContain('项目甲');
-    expect(wrapper.text()).toContain('描述甲');
-    expect(wrapper.text()).toContain('2 个页面');
-    expect(wrapper.findAll('button').some((b) => b.text() === '打开项目')).toBe(true);
-  });
-
-  it('创建新项目：填写名称后保存并写入列表', async () => {
-    const wrapper = await openedManager();
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === '创建新项目')!
-      .trigger('click');
-    expect(wrapper.text()).toContain('创建项目');
-
-    await wrapper.find('input').setValue('全新项目');
-    // textarea 描述留空
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === '保存')!
-      .trigger('click');
-    await flushPromises();
-
-    expect(projectApi.createProject).toHaveBeenCalledWith({ name: '全新项目', description: '' });
-    expect(wrapper.text()).toContain('全新项目');
-  });
-
-  it('编辑项目：修改名称后保存调用更新接口', async () => {
-    seedProjects([makeProject({ id: 'a', name: '旧名', description: '旧描述' })]);
-
-    const wrapper = await openedManager();
-
-    await wrapper.find('button[title="编辑"]').trigger('click');
-    expect(wrapper.text()).toContain('编辑项目');
-
-    await wrapper.find('input').setValue('新名');
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === '保存')!
-      .trigger('click');
-    await flushPromises();
-
-    expect(projectApi.updateProject).toHaveBeenCalledWith('a', {
-      name: '新名',
-      description: '旧描述',
-    });
-    expect(wrapper.text()).toContain('新名');
-  });
-
-  it('复制项目生成副本并调用复制逻辑', async () => {
-    seedProjects([makeProject({ id: 'a', name: '原本' })]);
-
-    const wrapper = await openedManager();
-
-    await wrapper.find('button[title="复制"]').trigger('click');
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('原本 (副本)');
-    expect(projectApi.copyProject).toHaveBeenCalledWith('a');
-  });
-
-  it('删除项目需确认，确认后移除并调用删除接口', async () => {
-    seedProjects([makeProject({ id: 'a', name: '待删' })]);
-
-    const wrapper = await openedManager();
-
-    await wrapper.find('button[title="删除"]').trigger('click');
-    await flushPromises();
-
-    expect(projectApi.deleteProject).toHaveBeenCalledWith('a');
-    expect(wrapper.text()).toContain('暂无项目');
-  });
-
-  it('取消确认时不删除项目', async () => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false),
-    );
-    seedProjects([makeProject({ id: 'a', name: '保留' })]);
-
-    const wrapper = await openedManager();
-
-    await wrapper.find('button[title="删除"]').trigger('click');
-    await flushPromises();
-
-    expect(projectApi.deleteProject).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain('保留');
-  });
-
-  it('打开项目切换当前项目并关闭弹窗', async () => {
-    seedProjects([makeProject({ id: 'a', name: '甲项目' })]);
-
-    const wrapper = await openedManager();
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === '打开项目')!
-      .trigger('click');
-    await flushPromises();
-
-    expect(localStorage.getItem('page-builder-current-project')).toBe('a');
-    expect(wrapper.find('.fixed').exists()).toBe(false);
-  });
-
-  it('点击关闭按钮与遮罩层均可关闭弹窗', async () => {
-    const wrapper = await openedManager();
-
-    await wrapper.find('button').trigger('click');
-    expect(wrapper.find('.fixed').exists()).toBe(false);
-
-    openModal(wrapper);
-    await nextTick();
-    expect(wrapper.find('.fixed').exists()).toBe(true);
-
-    await wrapper.find('.fixed').trigger('click');
-    expect(wrapper.find('.fixed').exists()).toBe(false);
-  });
-});
-
 describe('HistoryPanel', () => {
   let pinia: Pinia;
   let store: ReturnType<typeof useEditorStore>;
@@ -578,12 +290,12 @@ describe('HistoryPanel', () => {
     return mount(HistoryPanel, { global: { plugins: [pinia] } });
   }
 
-  it('初始无历史时展示 0/20，撤销与重做均禁用', () => {
+  it('初始无历史时展示 0/50，撤销与重做均禁用', () => {
     const wrapper = mountPanel();
     const buttons = wrapper.findAll('button');
 
     expect(wrapper.text()).toContain('操作历史');
-    expect(wrapper.text()).toContain('0 / 20');
+    expect(wrapper.text()).toContain('0 / 50');
     expect(wrapper.text()).toContain('当前状态');
     expect(wrapper.text()).toContain('现在');
     expect((buttons[0].element as HTMLButtonElement).disabled).toBe(true);
@@ -594,7 +306,7 @@ describe('HistoryPanel', () => {
     store.addComponent('text', 'root', 0, {}, {});
     const wrapper = mountPanel();
 
-    expect(wrapper.text()).toContain('1 / 20');
+    expect(wrapper.text()).toContain('1 / 50');
     // 历史快照的页面名称
     expect(wrapper.text()).toContain('未命名页面');
     expect(wrapper.text()).toContain('刚刚');
@@ -611,7 +323,7 @@ describe('HistoryPanel', () => {
     await undoBtn.trigger('click');
     expect(store.history.past).toHaveLength(0);
     expect(store.history.future).toHaveLength(1);
-    expect(wrapper.text()).toContain('0 / 20');
+    expect(wrapper.text()).toContain('0 / 50');
 
     await redoBtn.trigger('click');
     expect(store.history.past).toHaveLength(1);

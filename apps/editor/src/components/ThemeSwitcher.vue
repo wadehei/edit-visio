@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { Sun, Moon, Monitor } from 'lucide-vue-next';
 import { useTheme } from '../composables/useTheme';
 import type { ThemeMode } from '../composables/useTheme';
@@ -93,6 +93,7 @@ const handleClickOutside = (e: MouseEvent) => {
 };
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('click', handleClickOutside);
+  onMounted(() => window.addEventListener('click', handleClickOutside));
+  onUnmounted(() => window.removeEventListener('click', handleClickOutside));
 }
 </script>

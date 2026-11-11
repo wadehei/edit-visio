@@ -2,7 +2,9 @@
   <div class="border-t border-gray-200 dark:border-gray-700 p-4">
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">操作历史</h3>
-      <span class="text-xs text-gray-500 dark:text-gray-400"> {{ history.past.length }} / 20 </span>
+      <span class="text-xs text-gray-500 dark:text-gray-400">
+        {{ history.past.length }} / {{ MAX_HISTORY_SIZE }}
+      </span>
     </div>
 
     <!-- 时间线 -->
@@ -63,7 +65,8 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { useEditorStore } from '../stores/editorStore';
+import { useEditorStore, MAX_HISTORY_SIZE } from '../stores/editorStore';
+import { confirmDialog } from '../composables/useConfirm';
 
 const editorStore = useEditorStore();
 // state：必须用 storeToRefs 保持响应性
@@ -82,9 +85,17 @@ const formatTime = (timestamp: number) => {
   return date.toLocaleDateString();
 };
 
-const restoreTo = (index: number) => {
-  // 恢复到指定历史版本
+const restoreTo = async (index: number) => {
+  // 恢复到指定历史版本：跳转属于破坏性操作，先确认
   const steps = history.value.past.length - index;
+  if (steps <= 0) return;
+  const ok = await confirmDialog({
+    title: '回退历史版本',
+    message: `确定回退到该历史版本吗？将撤销最近 ${steps} 步操作。`,
+    confirmText: '回退',
+    danger: true,
+  });
+  if (!ok) return;
   for (let i = 0; i < steps; i++) {
     undo();
   }

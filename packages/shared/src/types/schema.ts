@@ -2,6 +2,8 @@
 export interface ComponentSchema {
   id: string;
   type: string;
+  /** 自定义名称（图层树重命名后优先展示，未设置时回退到组件类型标签） */
+  name?: string;
   props: Record<string, unknown>;
   styles: Partial<CSSStyleDeclaration>;
   events?: EventConfig[];

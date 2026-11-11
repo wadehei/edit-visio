@@ -38,9 +38,10 @@
     <!-- 锁定标记 -->
     <div
       v-if="component.locked"
-      class="absolute -top-6 right-0 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-t z-20"
+      class="absolute -top-6 right-0 px-1.5 py-1 bg-amber-500 text-white rounded-t z-20 flex items-center"
+      title="组件已锁定"
     >
-      🔒
+      <Lock :size="12" />
     </div>
 
     <!-- 组件类型标签 -->
@@ -73,14 +74,7 @@
           @dragover.prevent
           @drop.stop="handleDrop"
         >
-          <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-            />
-          </svg>
+          <Plus :size="28" class="mb-2" />
           <span>拖拽组件到此处</span>
         </div>
       </template>
@@ -91,18 +85,18 @@
     <Transition name="fade">
       <div v-if="isSelected" class="absolute -top-6 right-0 flex gap-1 z-20">
         <button
-          class="w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-xs transition-colors"
+          class="w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
           title="复制"
           @click.stop="handleDuplicate"
         >
-          ⧉
+          <Copy :size="12" />
         </button>
         <button
-          class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs transition-colors"
+          class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors"
           title="删除"
           @click.stop="handleDelete"
         >
-          ×
+          <Trash2 :size="12" />
         </button>
       </div>
     </Transition>
@@ -112,6 +106,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
+import { Copy, Lock, Plus, Trash2 } from 'lucide-vue-next';
 import type { ComponentSchema } from '@page-builder/shared';
 import {
   getComponentLabel,
@@ -120,6 +115,7 @@ import {
 } from '@page-builder/shared';
 import { useEditorStore } from '../stores/editorStore';
 import { getComponent, getMeta, isContainerType } from '../registry/componentRegistry';
+import { confirmDialog } from '../composables/useConfirm';
 
 interface Props {
   component: ComponentSchema;
@@ -188,8 +184,14 @@ const handleMouseLeave = () => {
   setHoveredId(null);
 };
 
-const handleDelete = () => {
-  if (confirm('确定要删除这个组件吗？')) {
+const handleDelete = async () => {
+  const ok = await confirmDialog({
+    title: '删除组件',
+    message: '确定要删除这个组件吗？',
+    confirmText: '删除',
+    danger: true,
+  });
+  if (ok) {
     deleteComponent(props.component.id);
   }
 };

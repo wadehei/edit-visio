@@ -1,6 +1,6 @@
 <template>
   <!-- 尺寸 -->
-  <StyleSection title="尺寸" icon="📐">
+  <StyleSection title="尺寸" :icon="Ruler">
     <div class="grid grid-cols-2 gap-2">
       <StyleField
         label="宽"
@@ -30,7 +30,7 @@
   </StyleSection>
 
   <!-- 间距 -->
-  <StyleSection title="间距" icon="📏">
+  <StyleSection title="间距" :icon="MoveVertical">
     <div class="space-y-2">
       <StyleField
         label="内边距 (padding)"
@@ -48,7 +48,7 @@
   </StyleSection>
 
   <!-- 排版 -->
-  <StyleSection title="排版" icon="🔤">
+  <StyleSection title="排版" :icon="Type">
     <div class="space-y-2">
       <div class="grid grid-cols-2 gap-2">
         <StyleField
@@ -116,7 +116,7 @@
   </StyleSection>
 
   <!-- 边框 -->
-  <StyleSection title="边框" icon="🔲">
+  <StyleSection title="边框" :icon="Square">
     <div class="space-y-2">
       <div class="grid grid-cols-3 gap-2">
         <StyleField
@@ -158,7 +158,7 @@
   </StyleSection>
 
   <!-- 背景 -->
-  <StyleSection title="背景" icon="🎨">
+  <StyleSection title="背景" :icon="Palette">
     <div class="space-y-2">
       <div>
         <label class="block text-[10px] text-gray-400 mb-0.5">背景颜色</label>
@@ -179,7 +179,7 @@
   </StyleSection>
 
   <!-- 效果 -->
-  <StyleSection title="效果" icon="✨">
+  <StyleSection title="效果" :icon="Sparkles">
     <div class="space-y-2">
       <div>
         <label class="block text-[10px] text-gray-400 mb-0.5"
@@ -205,7 +205,7 @@
   </StyleSection>
 
   <!-- 布局 (仅容器类组件显示) -->
-  <StyleSection v-if="isContainer" title="布局" icon="📋">
+  <StyleSection v-if="isContainer" title="布局" :icon="LayoutGrid">
     <div class="space-y-2">
       <div>
         <label class="block text-[10px] text-gray-400 mb-0.5">显示方式</label>
@@ -272,6 +272,7 @@
 </template>
 
 <script setup lang="ts">
+import { LayoutGrid, MoveVertical, Palette, Ruler, Sparkles, Square, Type } from 'lucide-vue-next';
 import StyleSection from '../StyleSection.vue';
 import StyleField from '../StyleField.vue';
 

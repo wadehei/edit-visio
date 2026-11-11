@@ -1,5 +1,9 @@
 <template>
-  <StyleSection v-if="componentMeta?.propDefinitions?.length" title="组件属性" icon="🎛️">
+  <StyleSection
+    v-if="componentMeta?.propDefinitions?.length"
+    title="组件属性"
+    :icon="SlidersHorizontal"
+  >
     <div class="space-y-2.5">
       <div v-for="propDef in componentMeta.propDefinitions" :key="propDef.name">
         <label class="block text-[11px] text-gray-500 mb-1">{{ propDef.label }}</label>
@@ -77,6 +81,7 @@
 
 <script setup lang="ts">
 import type { ComponentMeta } from '@page-builder/shared';
+import { SlidersHorizontal } from 'lucide-vue-next';
 import StyleSection from '../StyleSection.vue';
 
 const props = defineProps<{

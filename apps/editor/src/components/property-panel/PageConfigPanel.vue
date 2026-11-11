@@ -4,7 +4,7 @@
       <h2 class="text-sm font-semibold text-gray-800">页面配置</h2>
     </div>
     <div class="flex-1 overflow-y-auto">
-      <StyleSection title="基本信息" icon="📄" :default-open="true">
+      <StyleSection title="基本信息" :icon="FileText" :default-open="true">
         <div class="space-y-2">
           <div>
             <label class="block text-[10px] text-gray-400 mb-0.5">页面名称</label>
@@ -27,7 +27,7 @@
         </div>
       </StyleSection>
 
-      <StyleSection title="页面背景" icon="🎨">
+      <StyleSection title="页面背景" :icon="Palette">
         <div class="space-y-2">
           <div>
             <label class="block text-[10px] text-gray-400 mb-0.5">背景颜色</label>
@@ -49,7 +49,7 @@
         </div>
       </StyleSection>
 
-      <StyleSection title="图层结构" icon="📑" :default-open="true">
+      <StyleSection title="图层结构" :icon="Layers" :default-open="true">
         <LayerPanel />
       </StyleSection>
     </div>
@@ -58,6 +58,7 @@
 
 <script setup lang="ts">
 import type { PageSchema } from '@page-builder/shared';
+import { FileText, Layers, Palette } from 'lucide-vue-next';
 import LayerPanel from '../LayerPanel.vue';
 import StyleSection from '../StyleSection.vue';
 import StyleField from '../StyleField.vue';

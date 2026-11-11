@@ -1,29 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { defineComponent, h, nextTick } from 'vue';
+import { nextTick } from 'vue';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
+
+vi.mock('../utils/toast', () => ({ toast: vi.fn() }));
+
 import ComponentPanel from '../components/ComponentPanel.vue';
 import LayerPanel from '../components/LayerPanel.vue';
 import ContextMenu from '../components/ContextMenu.vue';
 import { useEditorStore } from '../stores/editorStore';
 import type { ComponentSchema } from '@page-builder/shared';
-
-/** LayerTreeItem 桩：隔离其递归 / store 依赖（重型子组件） */
-const LayerTreeItemStub = defineComponent({
-  name: 'LayerTreeItem',
-  props: {
-    components: { type: Array, default: () => [] },
-    depth: { type: Number, default: 0 },
-  },
-  setup(props) {
-    return () =>
-      h('div', {
-        class: 'layer-tree-stub',
-        'data-count': props.components.length,
-        'data-depth': props.depth,
-      });
-  },
-});
 
 /** 生成组件 schema */
 function makeComponent(
@@ -154,8 +140,7 @@ describe('ComponentPanel', () => {
 });
 
 describe('LayerPanel', () => {
-  const stubs = { LayerTreeItem: LayerTreeItemStub };
-  const mountLayerPanel = () => mount(LayerPanel, { global: { stubs } });
+  const mountLayerPanel = () => mount(LayerPanel);
 
   it('无组件时展示空状态', () => {
     const wrapper = mountLayerPanel();
@@ -193,9 +178,9 @@ describe('LayerPanel', () => {
 
     const row = wrapper.find('div.flex.items-center');
     expect(row.classes()).toContain('opacity-50');
-    expect(wrapper.text()).toContain('🔒 ');
-    expect(wrapper.find('button[title="显示"]').exists()).toBe(true);
-    expect(wrapper.find('button[title="解锁"]').exists()).toBe(true);
+    // 图标统一为 lucide：隐藏态与锁定态按钮均渲染图标
+    expect(wrapper.find('button[title="显示"] svg').exists()).toBe(true);
+    expect(wrapper.find('button[title="解锁"] svg').exists()).toBe(true);
   });
 
   it('切换可见性调用 updateComponent', async () => {
@@ -228,7 +213,7 @@ describe('LayerPanel', () => {
     expect(store.getComponentById('a')).toBeUndefined();
   });
 
-  it('子组件交由 LayerTreeItem 递归渲染', () => {
+  it('容器内子组件由 LayerTreeItem 递归渲染，子项同样具备可见/锁定能力', () => {
     const store = useEditorStore();
     store.setPage({
       ...store.page,
@@ -236,23 +221,28 @@ describe('LayerPanel', () => {
     });
     const wrapper = mountLayerPanel();
 
-    const stub = wrapper.find('.layer-tree-stub');
-    expect(stub.exists()).toBe(true);
-    expect(stub.attributes('data-count')).toBe('1');
-    expect(stub.attributes('data-depth')).toBe('1');
-  });
-
-  it('未桩化时容器内子组件由真实 LayerTreeItem 递归渲染', () => {
-    const store = useEditorStore();
-    store.setPage({
-      ...store.page,
-      children: [makeComponent('a', 'container', { children: [makeComponent('c')] })],
-    });
-    // 不传 LayerTreeItem 桩：若未正确 import 该组件，子级标签不会渲染
-    const wrapper = mount(LayerPanel);
-
     expect(wrapper.text()).toContain('📝 文本');
     expect(wrapper.findAll('div.flex.items-center')).toHaveLength(2);
+    // 子项（depth=1）缩进渲染，且可见/锁定/删除按钮与顶层一致
+    const childRow = wrapper.findAll('div.flex.items-center')[1];
+    expect(childRow.attributes('style')).toContain('padding-left');
+    expect(wrapper.findAll('button[title="隐藏"]')).toHaveLength(2);
+  });
+
+  it('双击图层项进入重命名并回车提交自定义名称', async () => {
+    const store = useEditorStore();
+    store.setPage({ ...store.page, children: [makeComponent('a')] });
+    const wrapper = mountLayerPanel();
+
+    await wrapper.find('div.flex.items-center').trigger('dblclick');
+    const input = wrapper.find('input');
+    expect(input.exists()).toBe(true);
+
+    await input.setValue('主标题');
+    await input.trigger('keyup.enter');
+
+    expect(store.getComponentById('a')!.name).toBe('主标题');
+    expect(wrapper.text()).toContain('主标题');
   });
 });
 

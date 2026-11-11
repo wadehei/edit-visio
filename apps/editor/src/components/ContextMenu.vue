@@ -35,6 +35,7 @@
 import { ref, computed, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
+import { toast } from '../utils/toast';
 
 interface MenuItem {
   action: string;
@@ -147,11 +148,17 @@ const menuItems = computed<MenuItem[]>(() => {
   return items;
 });
 
+const MENU_WIDTH = 200;
+const MENU_MAX_HEIGHT = 360;
+
 const show = (event: MouseEvent, componentId: string) => {
   event.preventDefault();
   event.stopPropagation();
-  x.value = event.clientX;
-  y.value = event.clientY;
+  // 边界检测：菜单贴近视口右下缘时向左/上翻转，避免被裁切
+  const maxX = Math.max(0, window.innerWidth - MENU_WIDTH);
+  const maxY = Math.max(0, window.innerHeight - MENU_MAX_HEIGHT);
+  x.value = Math.min(event.clientX, maxX);
+  y.value = Math.min(event.clientY, maxY);
   targetComponentId.value = componentId;
   setSelectedId(componentId);
   visible.value = true;
@@ -173,14 +180,21 @@ const executeAction = (action: string) => {
     case 'copy':
       setSelectedId(id);
       copyComponent();
+      toast('已复制组件', 'success');
       break;
     case 'paste':
-      pasteComponent();
+      if (clipboard.value.length === 0) {
+        toast('剪贴板为空，请先复制组件', 'warning');
+      } else {
+        pasteComponent();
+        toast('已粘贴组件', 'success');
+      }
       break;
     case 'duplicate':
       setSelectedId(id);
       copyComponent();
       pasteComponent();
+      toast('已快速复制组件', 'success');
       break;
     case 'moveUp':
       if (index > 0) {

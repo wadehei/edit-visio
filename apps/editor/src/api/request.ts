@@ -28,7 +28,9 @@ if (!API_BASE_URL) {
 }
 
 /** API 请求超时时间（毫秒） */
-const API_TIMEOUT_MS = 15_000;
+// 必须 ≥ 后端数据库连接超时（Hikari connectionTimeout 30s），
+// 否则后端仍在重试时前端先判超时，用户会误以为保存失败。
+const API_TIMEOUT_MS = 35_000;
 
 const request = axios.create({
   baseURL: API_BASE_URL || '/api/v1',
@@ -123,7 +125,7 @@ request.interceptors.response.use(
     }
 
     // 非 401 错误：提取业务错误信息。
-    // 超时错误（如 "timeout of 15000ms exceeded"）对用户不可读，统一转换为中文提示。
+    // 超时错误（如 "timeout of 35000ms exceeded"）对用户不可读，统一转换为中文提示。
     const message = isTimeoutError(error)
       ? '请求超时，请检查网络后重试'
       : error?.response?.data?.message || error?.message || '网络错误';

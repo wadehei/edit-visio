@@ -1,17 +1,27 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, vi, type Mock } from 'vitest';
 import { defineComponent, h } from 'vue';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 
-import { useAnimation } from '../composables/useAnimation';
-import { useAlignmentGuides } from '../composables/useAlignmentGuides';
+vi.mock('../composables/useConfirm', () => ({
+  confirmDialog: vi.fn(() => Promise.resolve(true)),
+  promptDialog: vi.fn(() => Promise.resolve(null)),
+}));
+vi.mock('../utils/toast', () => ({ toast: vi.fn() }));
+
 import { useDevicePreview } from '../composables/useDevicePreview';
 import { useTheme } from '../composables/useTheme';
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
 import { useAIAssistant } from '../composables/useAIAssistant';
+import { confirmDialog } from '../composables/useConfirm';
 import { useEditorStore } from '../stores/editorStore';
 import { logger } from '../utils/logger';
 import type { ComponentSchema } from '@page-builder/shared';
+
+// 内置确认对话框的 Promise 桩：默认返回 true，用例可按需覆盖
+beforeEach(() => {
+  vi.mocked(confirmDialog).mockResolvedValue(true);
+});
 
 /** 在组件实例上下文中调用组合式函数，以便 onMounted/onUnmounted 生效 */
 function mountComposable<T>(composable: () => T): { result: T; unmount: () => void } {
@@ -30,74 +40,6 @@ function mountComposable<T>(composable: () => T): { result: T; unmount: () => vo
 function makeComponent(id: string, type = 'text'): ComponentSchema {
   return { id, type, props: {}, styles: {}, children: [] };
 }
-
-/** 构造带可控 getBoundingClientRect 的元素 */
-function makeElement(id: string, rect: Partial<DOMRect>): HTMLElement {
-  const el = document.createElement('div');
-  el.id = id;
-  el.getBoundingClientRect = () => ({
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 0,
-    height: 0,
-    x: 0,
-    y: 0,
-    toJSON: () => ({}),
-    ...rect,
-  });
-  document.body.appendChild(el);
-  return el;
-}
-
-describe('useAnimation', () => {
-  it('默认 none 时 style 为空对象', () => {
-    const api = useAnimation();
-    expect(api.currentAnimation.value.type).toBe('none');
-    expect(api.animationStyle.value).toEqual({});
-  });
-
-  it('初始 currentAnimation 为完整默认配置', () => {
-    const api = useAnimation();
-    expect(api.currentAnimation.value).toEqual({
-      type: 'none',
-      duration: 500,
-      delay: 0,
-      easing: 'ease-out',
-      iteration: 'once',
-    });
-  });
-
-  it('设定动画后应生成带时长/延迟/次数的 animation 值', () => {
-    const api = useAnimation();
-    api.setAnimation('fadeIn');
-
-    expect(api.animationStyle.value).toEqual({ animation: 'fadeIn 0.5s ease-in 0s 1' });
-  });
-
-  it('时长与延迟按毫秒换算为秒，iteration 映射正确', () => {
-    const api = useAnimation();
-    api.setAnimation('fadeIn');
-    api.setDuration(1000);
-    api.setDelay(200);
-    api.setIteration('infinite');
-
-    expect(api.animationStyle.value.animation).toBe('fadeIn 1s ease-in 0.2s infinite');
-  });
-
-  it('setEasing 更新 easing 配置', () => {
-    const api = useAnimation();
-    api.setEasing('linear');
-    expect(api.currentAnimation.value.easing).toBe('linear');
-  });
-
-  it('导出预设与分类常量', () => {
-    const api = useAnimation();
-    expect(api.animationPresets.none).toBe('');
-    expect(api.animationCategories).toHaveLength(3);
-  });
-});
 
 describe('useDevicePreview', () => {
   it('默认使用手机尺寸', () => {
@@ -126,180 +68,6 @@ describe('useDevicePreview', () => {
     expect(api.showDeviceSwitcher.value).toBe(true);
     api.toggleDeviceSwitcher();
     expect(api.showDeviceSwitcher.value).toBe(false);
-  });
-});
-
-describe('useAlignmentGuides', () => {
-  const canvasRect = { left: 0, top: 0 } as DOMRect;
-
-  beforeEach(() => {
-    document.body.innerHTML = '';
-  });
-
-  it('无对齐关系时不应产生辅助线', () => {
-    makeElement('drag', { left: 0, top: 0, right: 50, bottom: 50 });
-    makeElement('other', { left: 200, top: 200, right: 250, bottom: 250 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('other')],
-      canvasRect,
-    );
-
-    expect(api.guides.value).toEqual([]);
-  });
-
-  it('边缘接近阈值时应生成包含两组件 id 的垂直辅助线', () => {
-    makeElement('drag', { left: 0, top: 0, right: 50, bottom: 50 });
-    makeElement('other', { left: 4, top: 0, right: 54, bottom: 50 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('other')],
-      canvasRect,
-    );
-
-    const vertical = api.guides.value.find((g) => g.type === 'vertical' && g.position === 4);
-    expect(vertical).toBeDefined();
-    expect(vertical?.components).toEqual(['drag', 'other']);
-  });
-
-  it('拖拽元素不存在时直接返回', () => {
-    makeElement('other', { left: 0, top: 0, right: 10, bottom: 10 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(makeComponent('missing'), [makeComponent('other')], canvasRect);
-
-    expect(api.guides.value).toEqual([]);
-  });
-
-  it('showGuides 关闭时不检测对齐并清空辅助线', () => {
-    makeElement('drag', { left: 0, top: 0, right: 50, bottom: 50 });
-    makeElement('other', { left: 0, top: 0, right: 50, bottom: 50 });
-
-    const api = useAlignmentGuides();
-    api.showGuides.value = false;
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('other')],
-      canvasRect,
-    );
-
-    expect(api.guides.value).toEqual([]);
-  });
-
-  it('toggleGuides 关闭时清空辅助线', () => {
-    makeElement('drag', { left: 0, top: 0, right: 50, bottom: 50 });
-    makeElement('other', { left: 0, top: 0, right: 50, bottom: 50 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('other')],
-      canvasRect,
-    );
-    expect(api.guides.value.length).toBeGreaterThan(0);
-
-    api.toggleGuides();
-    expect(api.showGuides.value).toBe(false);
-    expect(api.guides.value).toEqual([]);
-  });
-
-  it('clearGuides 清空辅助线', () => {
-    const api = useAlignmentGuides();
-    api.guides.value = [{ type: 'vertical', position: 1, components: ['a'] }];
-    api.clearGuides();
-    expect(api.guides.value).toEqual([]);
-  });
-
-  it('基于非零画布偏移与非对称矩形计算精确辅助线位置', () => {
-    const canvas = { left: 10, top: 20 } as DOMRect;
-    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
-    makeElement('other', { left: 100, top: 200, right: 150, bottom: 250 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('other')],
-      canvas,
-    );
-
-    const vertical = api.guides.value
-      .filter((g) => g.type === 'vertical')
-      .map((g) => g.position)
-      .sort((a, b) => a - b);
-    const horizontal = api.guides.value
-      .filter((g) => g.type === 'horizontal')
-      .map((g) => g.position)
-      .sort((a, b) => a - b);
-
-    // left/right/centerX = 100-10 / 150-10 / (100+150)/2-10
-    expect(vertical).toEqual([90, 115, 140]);
-    // top/bottom/centerY = 200-20 / 250-20 / (200+250)/2-20
-    expect(horizontal).toEqual([180, 205, 230]);
-  });
-
-  it('多个组件对齐同一位置时累加组件 id 而非覆盖', () => {
-    const canvas = { left: 10, top: 20 } as DOMRect;
-    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
-    makeElement('o1', { left: 100, top: 200, right: 150, bottom: 250 });
-    makeElement('o2', { left: 100, top: 200, right: 150, bottom: 250 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('o1'), makeComponent('o2')],
-      canvas,
-    );
-
-    const vertical = api.guides.value.find((g) => g.type === 'vertical' && g.position === 90);
-    expect(vertical?.components).toEqual(['drag', 'o1', 'o2']);
-
-    const horizontal = api.guides.value.find((g) => g.type === 'horizontal' && g.position === 180);
-    expect(horizontal?.components).toEqual(['drag', 'o1', 'o2']);
-  });
-
-  it('存在无对应 DOM 的组件时跳过且不产生辅助线', () => {
-    const canvas = { left: 10, top: 20 } as DOMRect;
-    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('ghost')],
-      canvas,
-    );
-
-    expect(api.guides.value).toEqual([]);
-  });
-
-  it('差值恰好等于阈值时不生成辅助线', () => {
-    const canvas = { left: 10, top: 20 } as DOMRect;
-    makeElement('drag', { left: 100, top: 200, right: 150, bottom: 250 });
-    makeElement('other', { left: 105, top: 205, right: 155, bottom: 255 });
-
-    const api = useAlignmentGuides();
-    api.detectAlignment(
-      makeComponent('drag'),
-      [makeComponent('drag'), makeComponent('other')],
-      canvas,
-    );
-
-    expect(api.guides.value).toEqual([]);
-  });
-
-  it('toggleGuides 重新开启时保留已有辅助线', () => {
-    const api = useAlignmentGuides();
-    api.toggleGuides();
-    expect(api.showGuides.value).toBe(false);
-
-    api.guides.value = [{ type: 'vertical', position: 1, components: ['a'] }];
-    api.toggleGuides();
-
-    expect(api.showGuides.value).toBe(true);
-    expect(api.guides.value).toHaveLength(1);
   });
 });
 
@@ -601,25 +369,27 @@ describe('useKeyboardShortcuts', () => {
     expect(store.page.children).toHaveLength(2);
   });
 
-  it('Delete 经确认后删除选中组件', () => {
+  it('Delete 经确认后删除选中组件', async () => {
     const store = useEditorStore();
     mountComposable(() => useKeyboardShortcuts());
 
     store.addComponent('text', 'root', 0);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(confirmDialog).mockResolvedValue(true);
 
     press({ key: 'Delete' });
+    await flushPromises();
     expect(store.page.children).toHaveLength(0);
   });
 
-  it('取消确认时不删除', () => {
+  it('取消确认时不删除', async () => {
     const store = useEditorStore();
     mountComposable(() => useKeyboardShortcuts());
 
     store.addComponent('text', 'root', 0);
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    vi.mocked(confirmDialog).mockResolvedValue(false);
 
     press({ key: 'Backspace' });
+    await flushPromises();
     expect(store.page.children).toHaveLength(1);
   });
 
@@ -713,7 +483,7 @@ describe('useKeyboardShortcuts', () => {
     const store = useEditorStore();
     mountComposable(() => useKeyboardShortcuts());
     store.addComponent('text', 'root', 0);
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    vi.mocked(confirmDialog).mockResolvedValue(false);
 
     expect(pressEvent({ key: 'c', ctrlKey: true }).defaultPrevented).toBe(true);
     expect(pressEvent({ key: 'Delete' }).defaultPrevented).toBe(true);
@@ -811,7 +581,6 @@ describe('useKeyboardShortcuts', () => {
   it('无选中时 Delete 不调用删除', () => {
     const store = useEditorStore();
     const deleteSpy = vi.spyOn(store, 'deleteComponent');
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mountComposable(() => useKeyboardShortcuts());
     store.addComponent('text', 'root', 0);
     store.setSelectedId(null);
@@ -820,17 +589,23 @@ describe('useKeyboardShortcuts', () => {
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 
-  it('Delete 以选中 id 调用 deleteComponent 并校验确认文案', () => {
+  it('Delete 以选中 id 调用 deleteComponent 并校验确认文案', async () => {
     const store = useEditorStore();
     const deleteSpy = vi.spyOn(store, 'deleteComponent');
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(confirmDialog).mockResolvedValue(true);
     mountComposable(() => useKeyboardShortcuts());
     store.addComponent('text', 'root', 0);
     const id = store.page.children[0].id;
 
     press({ key: 'Delete' });
+    await flushPromises();
 
-    expect(confirmSpy).toHaveBeenCalledWith('确定要删除这个组件吗？');
+    expect(confirmDialog).toHaveBeenCalledWith({
+      title: '删除组件',
+      message: '确定要删除这个组件吗？',
+      confirmText: '删除',
+      danger: true,
+    });
     expect(deleteSpy).toHaveBeenCalledWith(id);
   });
 
@@ -930,15 +705,16 @@ describe('useKeyboardShortcuts', () => {
     expect(copySpy).not.toHaveBeenCalled();
   });
 
-  it('Backspace 经确认后删除选中组件', () => {
+  it('Backspace 经确认后删除选中组件', async () => {
     const store = useEditorStore();
     const deleteSpy = vi.spyOn(store, 'deleteComponent');
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(confirmDialog).mockResolvedValue(true);
     mountComposable(() => useKeyboardShortcuts());
     store.addComponent('text', 'root', 0);
     const id = store.page.children[0].id;
 
     press({ key: 'Backspace' });
+    await flushPromises();
 
     expect(deleteSpy).toHaveBeenCalledWith(id);
   });

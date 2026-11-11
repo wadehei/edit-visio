@@ -2,11 +2,13 @@ import { onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useEditorStore } from '../stores/editorStore';
 import { findComponentInTree, duplicateComponentTree, saveAsJSON } from '@page-builder/shared';
+import { confirmDialog } from './useConfirm';
+import { toast } from '../utils/toast';
 
 export function useKeyboardShortcuts() {
   const editorStore = useEditorStore();
   // state：必须用 storeToRefs 保持响应性
-  const { selectedId, page } = storeToRefs(editorStore);
+  const { selectedId, page, selectedIds, clipboard } = storeToRefs(editorStore);
   // action：是稳定函数，直接从 store 实例解构
   const {
     undo,
@@ -42,20 +44,33 @@ export function useKeyboardShortcuts() {
     if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId.value) {
       e.preventDefault();
       copyComponent();
+      const count = selectedIds.value.length;
+      toast(count > 1 ? `已复制 ${count} 个组件` : '已复制组件', 'success');
     }
 
     // Ctrl/Cmd + V - 粘贴
     if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
       e.preventDefault();
-      pasteComponent();
+      if (clipboard.value.length === 0) {
+        toast('剪贴板为空，请先复制组件', 'warning');
+      } else {
+        pasteComponent();
+        toast('已粘贴组件', 'success');
+      }
     }
 
     // Delete / Backspace - 删除选中组件
     if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId.value) {
       e.preventDefault();
-      if (confirm('确定要删除这个组件吗？')) {
-        deleteComponent(selectedId.value);
-      }
+      const id = selectedId.value;
+      void confirmDialog({
+        title: '删除组件',
+        message: '确定要删除这个组件吗？',
+        confirmText: '删除',
+        danger: true,
+      }).then((ok) => {
+        if (ok) deleteComponent(id);
+      });
     }
 
     // 方向键 - 选择相邻组件
@@ -94,6 +109,7 @@ export function useKeyboardShortcuts() {
     if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedId.value) {
       e.preventDefault();
       handleDuplicate();
+      toast('已快速复制组件', 'success');
     }
   };
 

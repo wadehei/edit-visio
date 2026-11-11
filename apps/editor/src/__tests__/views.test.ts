@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
-  useRoute: () => ({ params: { projectId: '42' } }),
+  useRoute: () => ({ params: { projectId: '42' }, query: {} }),
 }));
 
 vi.mock('../stores/authStore', () => ({
@@ -46,12 +46,20 @@ vi.mock('../api/page', async (importOriginal) => {
 });
 
 vi.mock('../composables/useAutoSave', () => ({
-  useAutoSave: () => ({ saveStatus: { value: 'idle' } }),
+  useAutoSave: () => ({ saveStatus: { value: 'idle' }, pendingSave: { value: false } }),
 }));
 
 vi.mock('../composables/useKeyboardShortcuts', () => ({
   useKeyboardShortcuts: () => {},
 }));
+
+// 内置应用内确认/输入对话框桩：默认确认，用例可按需覆盖返回值
+vi.mock('../composables/useConfirm', () => ({
+  confirmDialog: vi.fn(() => Promise.resolve(true)),
+  promptDialog: vi.fn(() => Promise.resolve(null)),
+}));
+
+import { confirmDialog, promptDialog } from '../composables/useConfirm';
 
 /** 暴露 openModal 的 TemplateModal 桩，便于验证「使用模板」按钮 */
 const TemplateModalStub = defineComponent({
@@ -104,6 +112,21 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.auth.username = 'alice';
   mocks.auth.isLoggedIn = true;
+  // useTheme/ThemeSwitcher 依赖 matchMedia，jsdom 未实现
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+  vi.mocked(confirmDialog).mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -211,17 +234,6 @@ describe('LoginPage', () => {
 });
 
 describe('HomePage', () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true),
-    );
-    vi.stubGlobal(
-      'prompt',
-      vi.fn(() => '新名称'),
-    );
-  });
-
   it('加载成功后渲染项目网格与页面数量', async () => {
     mockProjectList([makeProject({ projectId: 1, name: '项目甲', pageCount: 3 })]);
     const wrapper = mount(HomePage);
@@ -338,10 +350,7 @@ describe('HomePage', () => {
   });
 
   it('取消确认时不删除', async () => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false),
-    );
+    vi.mocked(confirmDialog).mockResolvedValue(false);
     mockProjectList([makeProject({ projectId: 7, name: '保留' })]);
 
     const wrapper = mount(HomePage);
@@ -357,6 +366,7 @@ describe('HomePage', () => {
   });
 
   it('重命名项目调用更新接口', async () => {
+    vi.mocked(promptDialog).mockResolvedValue('新名称');
     mockProjectList([makeProject({ projectId: 9, name: '旧名' })]);
     vi.mocked(projectApi.updateProject).mockResolvedValue(undefined as never);
 
@@ -415,14 +425,6 @@ describe('EditorPage', () => {
   }
 
   beforeEach(() => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true),
-    );
-    vi.stubGlobal(
-      'prompt',
-      vi.fn(() => '新页面'),
-    );
     vi.stubGlobal('open', vi.fn());
   });
 
@@ -568,6 +570,13 @@ describe('EditorPage', () => {
       .findAll('button')
       .find((b) => b.text().includes('新建页面'))!
       .trigger('click');
+    await nextTick();
+
+    // 内置新建页面弹窗：确认「创建」
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '创建')!
+      .trigger('click');
     await flushPromises();
 
     expect(pageApi.createPage).toHaveBeenCalledWith('42', { title: '新页面', isHome: true });
@@ -587,6 +596,7 @@ describe('EditorPage', () => {
     await nextTick();
 
     await wrapper.find('button[title="删除组件 (Delete)"]').trigger('click');
+    await flushPromises();
 
     expect(store.getComponentById('c1')).toBeUndefined();
   });
@@ -596,39 +606,25 @@ describe('EditorPage', () => {
     const createObjectURL = vi.fn(() => 'blob:mock');
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    vi.stubGlobal(
-      'prompt',
-      vi.fn(() => '1'),
-    );
 
     const wrapper = mountEditor();
     await flushPromises();
 
+    // 打开导出下拉菜单
     await wrapper
       .findAll('button')
       .find((b) => b.text().includes('导出'))!
+      .trigger('click');
+    await nextTick();
+
+    // 选择「导出 HTML」
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('导出 HTML'))!
       .trigger('click');
 
     expect(createObjectURL).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
-  });
-
-  it('导出无效格式时给出警告', async () => {
-    mockLoadSuccess([]);
-    vi.stubGlobal(
-      'prompt',
-      vi.fn(() => '9'),
-    );
-
-    const wrapper = mountEditor();
-    await flushPromises();
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text().includes('导出'))!
-      .trigger('click');
-
-    expect(toast).toHaveBeenCalledWith('无效的导出选项', 'warning');
   });
 
   it('预览写入本地存储并打开新窗口', async () => {

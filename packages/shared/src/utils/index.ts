@@ -185,7 +185,7 @@ const COMPONENT_LABELS: Record<string, string> = {
  * 获取组件的显示标签
  */
 export function getComponentLabel(component: import('../types').ComponentSchema): string {
-  return COMPONENT_LABELS[component.type] || component.type;
+  return component.name?.trim() || COMPONENT_LABELS[component.type] || component.type;
 }
 
 /**

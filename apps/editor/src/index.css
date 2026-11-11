@@ -200,3 +200,18 @@ body {
 .stagger-item:nth-child(6) {
   animation-delay: 0.3s;
 }
+
+/* 深色模式基础样式（由 ThemeSwitcher 切换 <html class="dark">） */
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background-color: #0f172a;
+  color: rgba(255, 255, 255, 0.87);
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

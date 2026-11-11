@@ -6,19 +6,33 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { CSSProperties } from 'vue';
 import type { PageSchema } from '@page-builder/shared';
 import PreviewNode from '../components/PreviewNode.vue';
 import { logger } from '../utils/logger';
 
-/** 与编辑器「预览」写入的键保持一致 */
+/** 与编辑器「预览」写入的键保持一致（localStorage 回退） */
 const STORAGE_KEY = 'preview-page';
+/** 与编辑器 postMessage 约定的消息类型（主通道） */
+const MESSAGE_TYPE = 'page-builder:preview';
 
 const page = ref<PageSchema | null>(null);
 const ready = ref(false);
 
+/** 接收编辑器通过 postMessage 推送的最新页面快照（刷新/多标签也不依赖存储） */
+const onMessage = (e: MessageEvent) => {
+  const data = e.data as { type?: string; schema?: PageSchema } | null;
+  if (data && data.type === MESSAGE_TYPE && data.schema) {
+    page.value = data.schema;
+    ready.value = true;
+  }
+};
+
 onMounted(() => {
+  window.addEventListener('message', onMessage);
+
+  // localStorage 回退：直接打开 /preview 或刷新时使用
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
     try {
@@ -28,6 +42,10 @@ onMounted(() => {
     }
   }
   ready.value = true;
+});
+
+onUnmounted(() => {
+  window.removeEventListener('message', onMessage);
 });
 
 /** 过滤掉被隐藏的顶层组件 */

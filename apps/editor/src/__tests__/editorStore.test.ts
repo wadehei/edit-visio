@@ -765,17 +765,17 @@ describe('editorStore', () => {
   });
 
   describe('history bound & isRestoring', () => {
-    it('should cap history at MAX_HISTORY_SIZE (20) entries, keeping the most recent', () => {
+    it('should cap history at MAX_HISTORY_SIZE (50) entries, keeping the most recent', () => {
       const store = useEditorStore();
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < 60; i++) {
         store.addComponent('text', 'root', 0, { content: `c${i}` }, {});
       }
 
-      expect(store.history.past).toHaveLength(20);
+      expect(store.history.past).toHaveLength(50);
       // 每次 addComponent 先快照再加组件，故第 n 次快照含 n-1 个组件；
-      // 保留窗口为第 6..25 次快照 → 5..24 个组件
-      expect(store.history.past[0].schema.children).toHaveLength(5);
-      expect(store.history.past[19].schema.children).toHaveLength(24);
+      // 保留窗口为第 11..60 次快照 → 10..59 个组件
+      expect(store.history.past[0].schema.children).toHaveLength(10);
+      expect(store.history.past[49].schema.children).toHaveLength(59);
     });
 
     it('should move the current state into future on undo and back on redo', () => {

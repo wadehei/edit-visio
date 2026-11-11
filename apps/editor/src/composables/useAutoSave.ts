@@ -37,6 +37,8 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
 
   /** 供顶栏展示的保存状态 */
   const saveStatus = ref<SaveStatus>('idle');
+  /** 是否存在尚未落盘的改动（用于离开页面拦截与全局保存指示） */
+  const pendingSave = ref(false);
 
   // 从 localStorage 加载数据（fallback）
   const loadFromStorage = () => {
@@ -56,7 +58,8 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
   // 保存到 localStorage
   const saveToStorage = () => {
     try {
-      const data = JSON.stringify(deepClone(page.value));
+      // JSON.stringify 不会修改入参，无需额外 deepClone（避免每次保存的整树克隆开销）
+      const data = JSON.stringify(page.value);
       localStorage.setItem(STORAGE_KEY, data);
     } catch (error) {
       logger.error('AutoSave', 'Failed to save to localStorage', error);
@@ -86,19 +89,22 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
         projectId,
         String(pageId.value),
         {
-          schema: deepClone(page.value),
+          // axios 序列化请求体时不会修改入参，直接传引用即可
+          schema: page.value,
         },
         { signal },
       );
       // API 保存成功后，同步更新 localStorage
       saveToStorage();
       saveStatus.value = 'saved';
+      pendingSave.value = false;
     } catch (error) {
       if (signal.aborted) return; // 被取消的请求，忽略（新的保存已在进行中）
       logger.warn('AutoSave', 'Failed to save to API, falling back to localStorage', error);
       // API 失败时回退到本地存储
       saveToStorage();
       saveStatus.value = 'error';
+      pendingSave.value = false;
       toast('自动保存失败，已保存到本地', 'warning');
     }
   };
@@ -111,6 +117,7 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
     // undo/redo 恢复期间跳过自动保存
     if (isRestoring.value) return;
 
+    pendingSave.value = true;
     if (saveTimer) {
       clearTimeout(saveTimer);
     }
@@ -131,6 +138,7 @@ export function useAutoSave({ projectId, pageId }: AutoSaveTarget) {
 
   return {
     saveStatus,
+    pendingSave,
     loadFromStorage,
     saveToStorage,
     saveToAPI,
